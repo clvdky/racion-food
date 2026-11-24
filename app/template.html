@@ -5,82 +5,276 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Рацион на неделю</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600&display=swap" rel="stylesheet">
+<meta name="color-scheme" content="light">
 <style>
-/* VOICE спокойный бытовой помощник · IDEA список покупок на холодильнике · PICTURE меню дня крупно
-   COLOUR тема Telegram, иначе белый + зелёный · TYPE системный · LAYOUT одна колонка, нижняя навигация */
-:root{--bg:#f4f5f2;--card:#fff;--ink:#1b1f1a;--mut:#6b7268;--line:#e4e7e1;--acc:#2f7d4f;--acc-ink:#fff;--acc2:#e6f2ea;--warn:#b5651d}
-@media(prefers-color-scheme:dark){:root{--bg:#121512;--card:#1c201c;--ink:#e9ece7;--mut:#9aa196;--line:#2c312b;--acc:#5fbf86;--acc-ink:#0d1a12;--acc2:#1f3327;--warn:#e0a060}}
+/* Еда на неделю — дизайн-система
+   ИДЕЯ: неделя как мозаика тарелок. Цвет = приём пищи (завтрак — абрикос, обед — томат, ужин — баклажан, перекус — яблоко).
+   ШРИФТЫ: Unbounded — заголовки и цифры, Onest — текст. ФОН: шалфей, акцент — зелень. */
+:root{
+ --bg:#EEF1EB;--card:#FFFFFF;--soft:#F5F7F3;--ink:#17201A;--mut:#68725F;--line:#E0E5DC;
+ --acc:#14724A;--acc-ink:#FFFFFF;--acc2:#DCEEE2;--warn:#C2551F;--warn2:#FBE6DA;
+ --b:#E99A1F;--b2:#FDEFD2;--l:#DD4B32;--l2:#FBE2DB;--d:#6A4C9E;--d2:#ECE5F6;--s:#5E9F2E;--s2:#E5F1D8;
+ --sh:0 1px 2px rgba(23,32,26,.05),0 6px 20px -8px rgba(23,32,26,.12);
+ --disp:"Unbounded",system-ui,sans-serif;--txt:"Onest",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+ --navh:68px;color-scheme:light}
 *{box-sizing:border-box;min-width:0}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:560px;margin:0 auto;padding:14px 14px 150px}
-h1{font-size:24px;line-height:1.15;margin:6px 0 4px}h2{font-size:19px;margin:0 0 10px}h3{margin:0}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--txt);overflow-x:clip;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;-webkit-user-select:none;user-select:none}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 170px}
+h1,h2,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
+h1{font-size:26px;line-height:1.12;margin:4px 0 6px}
+h2{font-size:18px;line-height:1.2;margin:0 0 12px}
+h3{margin:0;font-size:17px;font-weight:600;line-height:1.25}
+p{margin:8px 0}
 .mut{color:var(--mut);font-size:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
-.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:8px 0 18px}.bar>i{display:block;height:100%;background:var(--acc);transition:width .3s}
-.opt{display:block;width:100%;text-align:left;padding:14px 16px;margin:8px 0;border:1.5px solid var(--line);border-radius:12px;background:var(--card);font:inherit;color:inherit;cursor:pointer;min-height:48px}
-.opt.on{border-color:var(--acc);background:var(--acc2)}.opt small{display:block;color:var(--mut)}
-input.num,input.search{width:100%;padding:13px 14px;font:inherit;font-size:17px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
-input:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-label.f{display:block;margin:10px 0 4px;font-size:14px;color:var(--mut)}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:12px 16px;border:0;border-radius:12px;background:var(--acc);color:var(--acc-ink);font:inherit;font-weight:600;cursor:pointer}
-.btn.sec{background:var(--acc2);color:var(--acc)}.btn.full{width:100%}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.chip{padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
-.chip.fav{border-color:var(--acc);background:var(--acc2);color:var(--acc);font-weight:600}
-.step{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:12px 0;border-top:1px solid var(--line)}
-.step .n{width:30px;height:30px;border-radius:50%;background:var(--acc2);color:var(--acc);font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.step.ok .n{background:var(--acc);color:var(--acc-ink)}.step.ok .tx{opacity:.45}
-.timer{margin-top:8px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--acc);background:none;color:var(--acc);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
-.timer.run{background:var(--acc);color:var(--acc-ink)}.timer.end{border-color:var(--warn);background:var(--warn);color:#fff}
-.chip.ban{border-color:var(--warn);color:var(--warn);text-decoration:line-through}
-.chip.on{border-color:var(--acc);background:var(--acc2);color:var(--acc)}
-.daybar{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;scroll-snap-type:x mandatory}
-.daybar button{flex:none;scroll-snap-align:start;width:52px;padding:8px 0;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
-.daybar button b{display:block;font-size:16px}.daybar button.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
-.meal{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
-.meal:first-of-type{border-top:0}.meal b{font-weight:600}.meal .k{white-space:nowrap;text-align:right;font-size:13px;color:var(--mut)}
-.tag{font-size:12px;color:var(--acc);font-weight:600}
-.li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:15px}
+.sub{color:var(--mut);font-size:15px;margin:0 0 16px}
+.card{background:var(--card);border-radius:22px;padding:16px;margin:12px 0;box-shadow:var(--sh)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 18px;border:0;border-radius:16px;background:var(--acc);color:var(--acc-ink);font-weight:600;font-size:16px;cursor:pointer;transition:transform .12s,filter .12s}
+.btn:active{transform:scale(.97);filter:brightness(.95)}
+.btn.sec{background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.ghost{background:var(--acc2);color:var(--acc)}
+.btn.full{width:100%}.btn.sm{min-height:42px;padding:8px 14px;font-size:15px;border-radius:13px}
+.btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:2.5px solid var(--acc);outline-offset:2px}
+a{color:var(--acc)}
+/* ---------- квиз ---------- */
+.qtop{display:flex;align-items:center;gap:12px;margin:2px 0 26px}
+.qtop .n{font-family:var(--disp);font-size:13px;font-weight:500;color:var(--mut);white-space:nowrap}
+.prog{flex:1;display:flex;gap:3px}.prog i{flex:1;height:5px;border-radius:3px;background:var(--line);transition:background .25s}.prog i.on{background:var(--acc)}
+.quiz h2{font-size:24px;line-height:1.15;margin:0 0 8px}
+.quiz .note{color:var(--mut);font-size:15px;margin:0 0 18px}
+.opts{display:grid;gap:10px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:15px 16px;border:0;border-radius:18px;background:var(--card);box-shadow:var(--sh),inset 0 0 0 1.5px transparent;cursor:pointer;min-height:60px;transition:box-shadow .15s,background .15s,transform .12s}
+.opt:active{transform:scale(.985)}
+.opt .t{flex:1}.opt .t b{display:block;font-weight:600;font-size:16px}.opt .t small{display:block;color:var(--mut);font-size:14px;margin-top:2px}
+.opt .ind{flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);display:flex;align-items:center;justify-content:center;transition:all .15s}
+.opt.multi .ind{border-radius:8px}
+.opt .ind svg{width:14px;height:14px;fill:none;stroke:var(--acc-ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.opt.on{background:var(--acc2);box-shadow:inset 0 0 0 2px var(--acc)}
+.opt.on .ind{background:var(--acc);box-shadow:none}.opt.on .ind svg{opacity:1}
+.opt .em{flex:none;width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--soft)}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.seg .opt{justify-content:center;font-family:var(--disp);font-size:22px;font-weight:600;min-height:72px;padding:0}
+.field{display:flex;align-items:center;background:var(--card);border-radius:18px;box-shadow:var(--sh),inset 0 0 0 1.5px var(--line);padding:0 18px;margin:0 0 4px;transition:box-shadow .15s}
+.field:focus-within{box-shadow:inset 0 0 0 2px var(--acc)}
+.field input{flex:1;border:0;background:none;outline:0;font:600 24px/1 var(--disp);color:var(--ink);padding:18px 0;letter-spacing:-.02em;width:100%}
+.field input::placeholder{color:var(--line)}
+.field span{color:var(--mut);font-size:16px;margin-left:8px}
+label.f{display:block;margin:16px 0 8px;font-size:15px;font-weight:500}
+.search{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:16px;padding:0 14px;box-shadow:var(--sh);margin:4px 0 12px}
+.search svg{flex:none;width:20px;height:20px;fill:none;stroke:var(--mut);stroke-width:2;stroke-linecap:round}
+.search input{flex:1;border:0;background:none;outline:0;font:inherit;font-size:16px;color:var(--ink);padding:14px 0}
+.search:focus-within{box-shadow:inset 0 0 0 2px var(--acc)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;margin:10px -16px;padding:0 16px;scrollbar-width:none}.chips.scroll::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--card);box-shadow:var(--sh);font-size:15px;cursor:pointer;transition:background .15s,color .15s}
+.chip.on,.chip.fav{background:var(--acc);color:var(--acc-ink);font-weight:600}
+.chip.ban{background:var(--warn2);color:var(--warn);text-decoration:line-through;box-shadow:none}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.grp{margin:20px 0 8px;font-size:14px;font-weight:600;color:var(--mut)}
+.grp:first-child{margin-top:4px}
+/* ---------- старт ---------- */
+.hero{padding:10px 0 4px}
+.hero h1{font-size:38px;line-height:1.02;margin:6px 0 12px;letter-spacing:-.035em}
+.hero p{font-size:17px;color:var(--mut);margin:0 0 22px;max-width:30ch}
+.mosaic{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:6px 0 22px}
+.mosaic .col{display:flex;flex-direction:column;gap:5px;align-items:stretch}
+.mosaic .col>small{text-align:center;font-size:12px;color:var(--mut);font-weight:500}
+.mosaic i{display:block;height:30px;border-radius:9px;transform-origin:bottom}
+.mosaic.anim i{animation:pop .5s cubic-bezier(.3,1.5,.6,1) both}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+.ib{background:var(--b)}.il{background:var(--l)}.id{background:var(--d)}.is{background:var(--s)}
+.feats{display:grid;gap:2px;background:var(--card);border-radius:22px;padding:6px 16px;box-shadow:var(--sh);margin:0 0 18px}
+.leg{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin:-12px 0 22px}
+.leg span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;background:var(--c)}
+.feats div{display:flex;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line);font-size:15px}
+.feats div:first-child{border-top:0}
+.feats b{font-weight:600}
+.feats .em{flex:none;font-size:22px;width:28px;text-align:center}
+/* ---------- рацион ---------- */
+.wk{background:var(--card);border-radius:24px;padding:18px 16px 14px;box-shadow:var(--sh);margin:0 0 14px}
+.wk .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.wk .sum{font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.05;white-space:nowrap}
+.wk .sum small{font-size:16px;color:var(--mut);font-weight:500;letter-spacing:0}
+.meter{height:8px;border-radius:4px;background:var(--soft);overflow:hidden;margin:12px 0 8px}
+.meter i{display:block;height:100%;border-radius:4px;background:var(--acc)}
+.meter.over i{background:var(--warn)}
+.wk .meta{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--mut)}
+.wk .meta b{color:var(--acc);font-weight:600}.wk .meta b.o{color:var(--warn)}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:14px 0 0}
+.week button{display:flex;flex-direction:column;gap:3px;align-items:stretch;padding:6px 4px 7px;border:0;border-radius:14px;background:none;cursor:pointer;transition:background .15s}
+.week button>b{font-size:13px;font-weight:600;text-align:center;color:var(--mut)}
+.week button>small{font-size:11px;text-align:center;color:var(--mut);font-variant-numeric:tabular-nums}
+.week button i{display:block;height:9px;border-radius:4px;opacity:.85}
+.week button.on{background:var(--soft)}
+.week button.on>b{color:var(--ink)}
+.week button.today>b::after{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--acc);margin:2px auto 0}
+.dayh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:22px 2px 10px}
+.dayh h2{margin:0;font-size:22px}
+.dayh span{font-family:var(--disp);font-size:15px;font-weight:500;color:var(--mut);white-space:nowrap}
+.macro{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px;margin:0 2px 6px}
+.macro i:nth-child(1){background:var(--d)}.macro i:nth-child(2){background:var(--b)}.macro i:nth-child(3){background:var(--s)}
+.mleg{display:flex;gap:14px;font-size:13px;color:var(--mut);margin:0 2px 14px;flex-wrap:wrap}
+.mleg span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+.mleg span:nth-child(1)::before{background:var(--d)}.mleg span:nth-child(2)::before{background:var(--b)}.mleg span:nth-child(3)::before{background:var(--s)}
+.meals{display:grid;gap:10px}
+.meal{position:relative;display:block;width:100%;text-align:left;border:0;padding:15px 16px 14px;border-radius:22px;cursor:pointer;background:var(--card);box-shadow:var(--sh);overflow:hidden;transition:transform .12s}
+.meal:active{transform:scale(.985)}
+.meal::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c)}
+.meal .row1{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.slot{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--c);background:var(--c2);padding:4px 10px 4px 8px;border-radius:999px}
+.slot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.meal .g{font-size:13px;color:var(--mut);white-space:nowrap}
+.meal h3{margin:0 0 8px;font-size:18px}
+.meal .nums{display:flex;gap:14px;font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.meal .nums b{color:var(--ink);font-weight:600}
+.meal .go{position:absolute;right:14px;bottom:14px;width:22px;height:22px;fill:none;stroke:var(--mut);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
+.sb{--c:var(--b);--c2:var(--b2)}.sl{--c:var(--l);--c2:var(--l2)}.sd{--c:var(--d);--c2:var(--d2)}.ss{--c:var(--s);--c2:var(--s2)}
+.save{display:flex;gap:14px;align-items:center;background:var(--acc2);border-radius:22px;padding:16px;margin:14px 0}
+.save .big{font-family:var(--disp);font-size:20px;font-weight:600;color:var(--acc);letter-spacing:-.02em;white-space:nowrap}
+.save p{margin:2px 0 0;font-size:14px;color:var(--mut)}
+.alert{background:var(--warn2);border-radius:22px;padding:16px;margin:0 0 14px}
+.alert h3{color:var(--warn);margin-bottom:4px}
+.alert .mut{margin-bottom:12px}
+.alert .btns{display:flex;gap:8px}.alert .btns .btn{flex:1}
+.hint{display:flex;gap:8px;align-items:center;justify-content:center;font-size:13px;color:var(--mut);margin:14px 0}
+/* ---------- списки ---------- */
+.li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:15px}
 .li:first-child{border-top:0}.li>span:last-child{white-space:nowrap;text-align:right}
-.li.done>span:first-child{opacity:.4;text-decoration:line-through}
-.box{display:inline-block;width:20px;height:20px;border:1.5px solid var(--line);border-radius:6px;vertical-align:-4px;margin-right:8px;text-align:center;line-height:17px;font-size:13px}
-.done .box{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
-.grp{margin:14px 0 2px;font-size:13px;font-weight:700;color:var(--mut)}
-.tot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;font-size:15px}
-.tot .best{color:var(--acc);font-weight:700}
-.est{color:var(--warn);font-size:12px}
-.kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
-.kpi div{background:var(--acc2);border-radius:12px;padding:10px 6px;text-align:center}
-.kpi b{display:block;font-size:clamp(15px,4.6vw,19px);white-space:nowrap}.kpi span{font-size:12px;color:var(--mut)}
-.prow{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,64px);gap:4px;padding:10px 0;border-top:1px solid var(--line);font-size:14px;align-items:center}
-.prow>span:not(:first-child){text-align:right;white-space:nowrap}.prow.h{font-size:12px;color:var(--mut);border-top:0}
+.chk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 0;border:0;border-top:1px solid var(--line);background:none;cursor:pointer}
+.chk:first-child{border-top:0}
+.chk .box{flex:none;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chk .box svg{width:14px;height:14px;fill:none;stroke:var(--acc-ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.chk .t{flex:1}.chk .t b{display:block;font-weight:500;font-size:16px}.chk .t small{display:block;font-size:13px;color:var(--mut);margin-top:1px}
+.chk .p{text-align:right;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}.chk .p small{display:block;font-weight:400;font-size:12px;color:var(--mut)}
+.chk.done .box{background:var(--acc);box-shadow:none}.chk.done .box svg{opacity:1}
+.chk.done .t b{text-decoration:line-through;color:var(--mut)}.chk.done .t,.chk.done .p{opacity:.55}
+.prg{display:flex;align-items:center;gap:12px;margin:0 0 6px}
+.prg .meter{flex:1;margin:0}
+.prg span{font-family:var(--disp);font-size:14px;font-weight:500;white-space:nowrap}
+.cardh{display:flex;align-items:center;gap:10px;margin:0 0 4px}
+.cardh .ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;background:var(--c2,var(--soft))}
+.cardh b{font-weight:600}
+.total{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 0 0;margin-top:4px;border-top:1px solid var(--line)}
+.total .disp{font-size:24px;white-space:nowrap}
+.stores{display:grid;gap:12px;margin:10px 0 2px}
+.store{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center;font-size:15px}
+.store .bar{height:10px;border-radius:5px;background:var(--soft);overflow:hidden}
+.store .bar i{display:block;height:100%;background:var(--mut);opacity:.45;border-radius:5px}
+.store.best .bar i{background:var(--acc);opacity:1}
+.store.best b,.store.best span:last-child{color:var(--acc);font-weight:600}
+.est{color:var(--warn);font-size:12px;font-weight:500}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,62px);gap:4px;padding:12px 0;border-top:1px solid var(--line);font-size:15px;align-items:center}
+.prow>span:not(:first-child){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.prow.h{font-size:12px;color:var(--mut);border-top:0;padding-top:2px;font-weight:500}
 .prow .b{color:var(--acc);font-weight:700}
-.nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:10}
+.rec{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:12px 0;border:0;border-top:1px solid var(--line);background:none;cursor:pointer}
+.rec:first-child{border-top:0}
+.rec .sq{flex:none;width:50px;height:50px;border-radius:15px;background:var(--c2);color:var(--c);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.rec .sq b{font-family:var(--disp);font-size:17px;font-weight:600}.rec .sq small{font-size:10px;margin-top:2px;font-weight:600}
+.rec .t{flex:1}.rec .t b{display:block;font-weight:600;font-size:16px;line-height:1.25}.rec .t small{display:block;color:var(--mut);font-size:13px;margin-top:3px}
+.rec .p{font-size:14px;color:var(--mut);white-space:nowrap;text-align:right}
+/* ---------- профиль ---------- */
+.me{display:flex;align-items:center;gap:14px;margin:4px 0 18px}
+.ava{flex:none;width:56px;height:56px;border-radius:18px;background:var(--acc);color:var(--acc-ink);font:600 24px var(--disp);display:flex;align-items:center;justify-content:center}
+.me h1{margin:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+.stats div{background:var(--card);border-radius:18px;padding:14px 10px;box-shadow:var(--sh)}
+.stats b{display:block;font:600 clamp(15px,4.4vw,19px)/1.1 var(--disp);letter-spacing:-.02em;white-space:nowrap}
+.stats span{font-size:12px;color:var(--mut)}
+.set{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 0;border:0;border-top:1px solid var(--line);background:none;cursor:pointer;font-size:15px}
+.set:first-child{border-top:0}
+.set .k{flex:none;color:var(--mut);width:42%}.set .v{flex:1;text-align:right;font-weight:500}
+.set .ch{flex:none;width:18px;height:18px;fill:none;stroke:var(--mut);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.set.act2 .k{color:var(--ink);font-weight:500;width:auto;flex:1}.set.act2 .v{flex:none;color:var(--mut);font-weight:400}
+/* ---------- навигация ---------- */
+.nav{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--card) 88%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:10}
 .nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
-.nav button{background:none;border:0;color:var(--mut);font:inherit;font-size:11px;padding:4px 0;cursor:pointer;min-height:48px}
-.nav button svg{display:block;margin:0 auto 2px;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.nav button.on{color:var(--acc);font-weight:600}
-.act{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));padding:10px 14px;pointer-events:none;z-index:9}
-.act .in{max-width:532px;margin:0 auto;display:flex;gap:8px;pointer-events:auto}.act .btn{flex:1}
-.quiz .act{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 35%)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
-.sheet{background:var(--card);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}
-.sheet .row{display:flex;gap:8px;margin-top:12px}.sheet .row .btn{flex:1}
-.toast{position:fixed;left:50%;bottom:140px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;max-width:90%}
-.hero{background:var(--acc);color:var(--acc-ink);border-radius:20px;padding:20px;margin:6px 0 12px}
-.hero h1{margin:0 0 6px}.hero p{margin:0 0 14px;opacity:.9}.hero .btn{background:var(--acc-ink);color:var(--acc)}
+.nav button{background:none;border:0;color:var(--mut);font-size:11px;font-weight:500;padding:2px 0;cursor:pointer;min-height:54px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.nav button .pill{width:56px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.nav button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button.on{color:var(--acc);font-weight:600}.nav button.on .pill{background:var(--acc2)}
+.act{position:fixed;left:0;right:0;bottom:calc(var(--navh) + env(safe-area-inset-bottom));padding:12px 16px 10px;pointer-events:none;z-index:9;background:linear-gradient(transparent,var(--bg) 40%)}
+.act .in{max-width:528px;margin:0 auto;display:flex;gap:10px;pointer-events:auto}.act .btn{flex:1}
+.act .btn.sec{flex:.75}
+.quiz .act{bottom:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+/* ---------- шторка ---------- */
+.modal{position:fixed;inset:0;background:rgba(10,14,11,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
+.sheet{position:relative;background:var(--bg);width:100%;max-width:560px;max-height:90vh;overflow:auto;border-radius:28px 28px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));animation:up .28s cubic-bezier(.2,.9,.3,1)}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.sheet h2{font-size:23px;margin:10px 0 6px}
+.sheet .row{display:flex;gap:10px;margin-top:12px}.sheet .row .btn{flex:1}
+.sheet .foot{position:sticky;bottom:calc(-18px - env(safe-area-inset-bottom));margin:16px -16px calc(-18px - env(safe-area-inset-bottom));padding:12px 16px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 22%)}
+.sheet .foot .row{margin-top:10px}
+@keyframes up{from{transform:translateY(100%)}}@keyframes fade{from{opacity:0}}
+.nutri{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:6px;margin:14px 0}
+.nutri div{background:var(--card);border-radius:16px;padding:10px 8px;text-align:center;box-shadow:var(--sh)}
+.nutri b{display:block;font:600 17px/1.15 var(--disp);letter-spacing:-.02em}.nutri span{font-size:12px;color:var(--mut)}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 0}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--mut);background:var(--card);padding:5px 10px;border-radius:999px;box-shadow:var(--sh)}
+.badge.w{color:var(--warn);background:var(--warn2);box-shadow:none}
+.step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.step:first-child{border-top:0}
+.step .n{width:36px;height:36px;border-radius:12px;background:var(--acc2);color:var(--acc);font:600 15px var(--disp);display:flex;align-items:center;justify-content:center;cursor:pointer;border:0;transition:all .15s}
+.step .n svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.step.ok .n{background:var(--acc);color:var(--acc-ink)}.step.ok .tx{opacity:.45}
+.step .tx{padding-top:6px;font-size:16px;line-height:1.5}
+.timer{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:9px 14px;border-radius:12px;border:0;background:var(--acc2);color:var(--acc);font-size:15px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums}
+.timer.run{background:var(--acc);color:var(--acc-ink)}.timer.end{background:var(--warn);color:#fff}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-size:15px;font-weight:500;z-index:30;max-width:90%;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:drop .25s cubic-bezier(.2,.9,.3,1)}
+@keyframes drop{from{transform:translate(-50%,-20px);opacity:0}}
 .empty{text-align:center;padding:30px 10px;color:var(--mut)}
-@media(prefers-reduced-motion:reduce){.bar>i{transition:none}}
+.empty .em{font-size:40px;display:block;margin-bottom:8px}
+.fade{animation:fade .25s}
+
+/* ---------- иконки и иллюстрации ---------- */
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:middle}
+.ic.sm{width:15px;height:15px;stroke-width:2.2}
+.chip .ic.sm{margin-right:-1px}.ic.fav{color:var(--l);fill:var(--l);margin-right:4px;vertical-align:-2px}
+.opt .em{color:var(--acc)}.opt.on .em{background:var(--card)}
+.opt.sb .em{color:var(--b);background:var(--b2)}.opt.sl .em{color:var(--l);background:var(--l2)}.opt.sd .em{color:var(--d);background:var(--d2)}.opt.ss .em{color:var(--s);background:var(--s2)}
+.feats .em{width:40px;height:40px;border-radius:13px;background:var(--acc2);color:var(--acc);display:flex;align-items:center;justify-content:center}
+.illo{display:flex;justify-content:center;margin:0 0 4px}.illo svg{width:100%;max-width:300px;height:auto}
+.illo.sm{margin:4px 0 8px}.illo.sm svg{max-width:130px}
+.illo.anim svg>*{animation:pop .55s cubic-bezier(.3,1.4,.6,1) both}
+.illo.anim svg>*:nth-child(2){animation-delay:.05s}.illo.anim svg>*:nth-child(3){animation-delay:.1s}.illo.anim svg>*:nth-child(4){animation-delay:.15s}.illo.anim svg>*:nth-child(5){animation-delay:.2s}.illo.anim svg>*:nth-child(n+6){animation-delay:.25s}
+.illo.anim svg>*{transform-box:fill-box;transform-origin:50% 100%}
+.alert.info{background:var(--b2)}.alert.info h3{color:#9A5B00}
+.card.list{padding:2px 16px}
+.set .si{flex:none;width:34px;height:34px;border-radius:11px;background:var(--acc2);color:var(--acc);display:flex;align-items:center;justify-content:center}
+.set .si .ic{width:19px;height:19px}
+.set .k{flex:none;width:auto;color:var(--ink);font-weight:500}
+.set .v{flex:1;text-align:right;color:var(--mut);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn .ic{width:20px;height:20px;stroke-width:2}
+.badge .ic.sm{width:14px;height:14px}
+.timer .ic.sm{width:16px;height:16px}
+
+/* ---------- покупки: купить / дома ---------- */
+.segc{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#E2E7DE;border-radius:15px;padding:4px;margin:4px 0 16px}
+.segc button{border:0;background:none;border-radius:11px;padding:10px 6px;font-size:15px;font-weight:600;color:var(--mut);cursor:pointer;transition:background .15s,color .15s}
+.segc button.on{background:var(--card);color:var(--ink);box-shadow:var(--sh)}
+.segc span{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:var(--acc2);color:var(--acc);font-size:13px;margin-left:4px}
+div.chk{cursor:default}
+.chk>.box{border:0;background:none;padding:0;cursor:pointer}
+.chk>.t{border:0;background:none;padding:0;text-align:left;cursor:pointer}
+.chk.done>.box{background:var(--acc)}
+.set .t2{flex:1;min-width:0}.set .t2 b{display:block;font-weight:500}.set .t2 small{display:block;color:var(--mut);font-size:13px;margin-top:1px}
+.field input::placeholder{font:500 17px var(--txt);color:#B5BDB0;letter-spacing:0}
+.nw .si,.cardh .si{flex:none;width:34px;height:34px;border-radius:11px;background:var(--acc2);color:var(--acc);display:flex;align-items:center;justify-content:center}
+.nw p{margin:8px 0 12px}
+@media(prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
-<nav class="nav" id="nav" hidden><div class="in">
- <button data-t="plan" onclick="go('plan')"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M4 10h16"/></svg>Рацион</button>
- <button data-t="list" onclick="go('list')"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Покупки</button>
- <button data-t="prices" onclick="go('prices')"><svg viewBox="0 0 24 24"><path d="M3 12l9-9h8v8l-9 9z"/><circle cx="16" cy="8" r="1.5"/></svg>Цены</button>
- <button data-t="recipes" onclick="go('recipes')"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0z"/><path d="M9 7c0-2 2-2 2-4M14 7c0-2 2-2 2-4"/></svg>Рецепты</button>
- <button data-t="me" onclick="go('me')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Профиль</button>
+<nav class="nav" id="nav" hidden aria-label="Разделы"><div class="in">
+ <button data-t="plan" onclick="go('plan')"><span class="pill"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M4 10h16"/></svg></span>Рацион</button>
+ <button data-t="list" onclick="go('list')"><span class="pill"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></span>Покупки</button>
+ <button data-t="prices" onclick="go('prices')"><span class="pill"><svg viewBox="0 0 24 24"><path d="M3 12l9-9h8v8l-9 9z"/><circle cx="16" cy="8" r="1.5"/></svg></span>Цены</button>
+ <button data-t="recipes" onclick="go('recipes')"><span class="pill"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0z"/><path d="M9 7c0-2 2-2 2-4M14 7c0-2 2-2 2-4"/></svg></span>Рецепты</button>
+ <button data-t="me" onclick="go('me')"><span class="pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Профиль</button>
 </div></nav>
 <script>
 {
@@ -88,7 +282,8 @@ const D = /*DATA*/null;
 const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData !== undefined ? window.Telegram.WebApp : null;
 const P = Object.fromEntries(D.products.map(p => [p.id, p]));
 const R = Object.fromEntries(D.recipes.map(r => [r.id, r]));
-const STORES = ["magnum", "small", "arbuz"];
+const ALL_STORES = ["magnum", "small", "arbuz"], STORES = [...ALL_STORES];
+function setStores() { const live = ALL_STORES.filter(s => Object.keys(PRICES.stores?.[s]?.items || {}).length); STORES.splice(0, STORES.length, ...(live.length ? live : ALL_STORES)); }
 const SN = {magnum: "Magnum", small: "Small", arbuz: "Arbuz"};
 const DAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"], DAYS_FULL = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
 const TOOLS = [["pan","Сковорода"],["pot_small","Небольшая кастрюля (до 3 л)"],["pot_big","Большая кастрюля (от 4 л)"],["kazan","Казан"],["oven","Духовка"],["multi","Мультиварка"],["micro","Микроволновка"]];
@@ -100,7 +295,7 @@ let PRICES = D.prices || {stores: {}};
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = n => Math.round(n).toLocaleString("ru-RU");
 const $ = id => document.getElementById(id);
-function toast(t) { const e = document.createElement("div"); e.className = "toast"; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2400); }
+function toast(t) { document.querySelectorAll(".toast").forEach(x => x.remove()); const e = document.createElement("div"); e.className = "toast"; e.setAttribute("role", "status"); e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2400); }
 const haptic = t => { try { tg && tg.HapticFeedback.selectionChanged(); } catch (e) {} };
 
 // ---------- хранилище: Telegram CloudStorage (между устройствами) + localStorage ----------
@@ -127,19 +322,15 @@ const ST = {
   }
 };
 
-// ---------- Telegram тема ----------
+// ---------- тема: своя палитра, светлая/тёмная — как в Telegram ----------
+function applyTheme() {
+  try { if (tg && tg.isVersionAtLeast("6.1")) { tg.setHeaderColor("#EEF1EB"); tg.setBackgroundColor("#EEF1EB"); } } catch (e) {}
+  try { if (tg && tg.isVersionAtLeast("7.10")) tg.setBottomBarColor("#FFFFFF"); } catch (e) {}
+}
+applyTheme();
 if (tg) {
-  try {
-    tg.ready(); tg.expand();
-    const t = tg.themeParams || {}, r = document.documentElement.style;
-    if (t.bg_color) { r.setProperty("--card", t.bg_color); r.setProperty("--bg", t.secondary_bg_color || t.bg_color); }
-    if (t.text_color) r.setProperty("--ink", t.text_color);
-    if (t.hint_color) r.setProperty("--mut", t.hint_color);
-    if (t.button_color) { r.setProperty("--acc", t.button_color); r.setProperty("--acc2", t.button_color + "22"); }
-    if (t.button_text_color) r.setProperty("--acc-ink", t.button_text_color);
-    if (t.section_separator_color) r.setProperty("--line", t.section_separator_color);
-    tg.BackButton.onClick(back);
-  } catch (e) {}
+  try { tg.ready(); tg.expand(); tg.onEvent("themeChanged", applyTheme); tg.BackButton.onClick(back); } catch (e) {}
+  try { tg.isVersionAtLeast("7.7") && tg.disableVerticalSwipes(); } catch (e) {}
 }
 
 // ---------- цены ----------
@@ -177,79 +368,170 @@ if (!A.slots) A.slots = A.meals === "4" ? ["b","l","d","s"] : ["b","l","d"];
 if (!A.tools) A.tools = ["pan","pot_small","pot_big","oven"];
 let PLAN = ST.get("plan");     // {days, slots, kc, ppl, seed}
 let DONE = ST.get("done") || {};
+let STOCK = ST.get("stock") || {};
 let tab = "plan", quizStep = -1, curDay = (new Date().getDay() + 6) % 7, recFilter = "all", recQuery = "", priceQuery = "";
 
 // ---------- квиз ----------
+const IC = {
+  down:'<path d="M3 7l6 6 4-4 8 8"/><path d="M21 11v6h-6"/>',
+  keep:'<path d="M12 4v16M6 20h12M4 8h16"/><path d="M4 8l-2.5 6a2.5 2.5 0 0 0 5 0zM20 8l-2.5 6a2.5 2.5 0 0 0 5 0z"/>',
+  up:'<path d="M3 17l6-6 4 4 8-8"/><path d="M21 13V7h-6"/>',
+  male:'<circle cx="10" cy="14" r="6"/><path d="M14.5 9.5L20 4M15 4h5v5"/>',
+  female:'<circle cx="12" cy="9" r="6"/><path d="M12 15v7M9 19h6"/>',
+  sunrise:'<path d="M3 18h18M7 18a5 5 0 0 1 10 0M12 4v4M4.5 10.5l2 1.5M19.5 10.5l-2 1.5"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  apple:'<path d="M12 7.5c-2-1.5-6.5-1-7 3.5-.5 4 1.5 9 4.5 9 1.2 0 1.6-.6 2.5-.6s1.3.6 2.5.6c3 0 5-5 4.5-9-.5-4.5-5-5-7-3.5z"/><path d="M12 7.5c0-2 1-3.5 3-4.5"/>',
+  beef:'<path d="M14.5 4c3.5 0 6.5 3 5.5 7-1.2 5-7 9-12 9-3.2 0-5-2.3-3.8-5 .9-2 3-2.2 4-4.3C9.4 7.6 11 4 14.5 4z"/><circle cx="14" cy="10" r="2"/>',
+  chicken:'<path d="M15.5 3.5a5.5 5.5 0 0 1 2.4 10.4c-1.7.8-3.7.8-5.2-.1l-3.1 3.1.4 1.9a1.6 1.6 0 1 1-2.3 1.4l-.3-1.2-1.2-.3a1.6 1.6 0 1 1 1.4-2.3l1.9.4 3.1-3.1c-.9-1.5-.9-3.5-.1-5.2a5.5 5.5 0 0 1 3-2.9z"/>',
+  fish:'<path d="M2.5 12c3-5 9.5-6 14-2.5L21 6.5v11l-4.5-3c-4.5 3.5-11 2.5-14-2.5z"/><path d="M7 11.5h.01"/>',
+  milk:'<path d="M8.5 2h7M9.5 2v3.5L7 9v12.5h10V9l-2.5-3.5V2"/><path d="M7 13h10"/>',
+  egg:'<path d="M12 3c3.5 0 7 6 7 11a7 7 0 0 1-14 0C5 9 8.5 3 12 3z"/>',
+  wheat:'<path d="M12 22V9M12 13c-3 0-4-2-4-4 3 0 4 2 4 4zM12 13c3 0 4-2 4-4-3 0-4 2-4 4zM12 18c-3 0-4-2-4-4 3 0 4 2 4 4zM12 18c3 0 4-2 4-4-3 0-4 2-4 4zM12 8c-1.5-1-1.5-3 0-5 1.5 2 1.5 4 0 5z"/>',
+  bolt:'<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  hourglass:'<path d="M6 2h12M6 22h12M7 2c0 6 10 6 10 10S7 16 7 22M17 2c0 6-10 6-10 10s10 4 10 10"/>',
+  pan:'<circle cx="9" cy="13" r="6.5"/><path d="M15.5 13H22"/>',
+  pot_small:'<path d="M5 10h14v6.5a3.5 3.5 0 0 1-3.5 3.5h-7A3.5 3.5 0 0 1 5 16.5z"/><path d="M3 10h18M10 7h4"/>',
+  pot_big:'<path d="M4 7.5h16v10a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 17.5z"/><path d="M2 7.5h20M10 4h4M2 11h2M20 11h2"/>',
+  kazan:'<path d="M3 10h18a9 9 0 0 1-18 0z"/><path d="M1.5 10h21M9 6.5h6"/>',
+  oven:'<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 8h18"/><rect x="7" y="11" width="10" height="6.5" rx="1"/><path d="M7 5.5h.01M10 5.5h.01"/>',
+  multi:'<rect x="4" y="6" width="16" height="15" rx="5"/><path d="M4 11h16M9 3h6M12 3v3"/><circle cx="12" cy="16" r="1.5"/>',
+  micro:'<rect x="2" y="5" width="20" height="14" rx="2.5"/><rect x="5" y="8" width="10" height="8" rx="1"/><path d="M18.5 9v.01M18.5 12v.01M18.5 15v.01"/>',
+  box:'<rect x="3" y="9" width="18" height="11" rx="2.5"/><path d="M3 13h18M6 9V6.5A1.5 1.5 0 0 1 7.5 5h9A1.5 1.5 0 0 1 18 6.5V9"/>',
+  plates:'<circle cx="8" cy="12" r="5.5"/><circle cx="8" cy="12" r="2.5"/><circle cx="18" cy="12" r="4"/>',
+  heart:'<path d="M12 20s-7.5-4.5-7.5-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7.5 2.8C19.5 15.5 12 20 12 20z"/>',
+  ban:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  steps:'<path d="M10 6h11M10 12h11M10 18h11M4 4.5h1.5V9M4 9h3M7 19.5H4c0-1.5 3-2.5 3-4 0-.8-.7-1.3-1.5-1.3S4 14.8 4 15.3"/>',
+  grid:'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+  bag:'<path d="M5 7.5h14l-1.3 11.2a2 2 0 0 1-2 1.8H8.3a2 2 0 0 1-2-1.8z"/><path d="M9 7.5a3 3 0 0 1 6 0"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  ruler:'<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+  scales:'<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M8.5 10a5 5 0 0 1 7 0L12 13.5"/>',
+  cake:'<path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M5 16c2 1.5 4.5 1.5 7 0s5-1.5 7 0M12 12V8M12 5.5v.01"/>',
+  run:'<circle cx="14" cy="4.5" r="2"/><path d="M6 20l3.5-5 3 2 1.5-5M8 10l3.5-2.5 3.5 2 2.5 3.5H20M12.5 17l-1 4"/>',
+  people:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 13.5a6.5 6.5 0 0 1 3.5 6.5"/>',
+  wallet:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2M6 6l9-3 1.5 3"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  spark2:'<rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M9 15l2 2 4-4"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><path d="M9 8h4.5a2.5 2.5 0 0 1 0 5H9V8zM9 13v4M8 15.5h5"/>',
+};
+const icon = (n, cls) => `<svg class="ic ${cls || ""}" viewBox="0 0 24 24" aria-hidden="true">${IC[n] || ""}</svg>`;
+const bars = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${[0,1,2,3].map(i => `<rect x="${3 + i * 5}" y="${17 - i * 4}" width="3" height="${4 + i * 4}" rx="1.2" ${i < n ? 'fill="currentColor"' : 'opacity=".35"'}/>`).join("")}</svg>`;
 const Q = [
-  {k:"goal", t:"Какая цель?", o:[["lose","Похудеть","−15–20% калорий"],["keep","Держать вес",""],["gain","Набрать массу","+10–15% калорий"]]},
-  {k:"sex", t:"Пол", o:[["m","Мужской"],["f","Женский"]]},
-  {k:"body", t:"Твои параметры", num:[["age","Возраст, лет",25],["height","Рост, см",175],["weight","Вес, кг",70]]},
-  {k:"act", t:"Активность", o:[["1.2","Сидячая","офис, без тренировок"],["1.375","Лёгкая","1–3 тренировки в неделю"],["1.55","Средняя","3–5 тренировок"],["1.725","Высокая","каждый день / физическая работа"]]},
-  {k:"slots", t:"Какие приёмы пищи планируем?", multi:[["b","Завтрак"],["l","Обед"],["d","Ужин"],["s","Перекус"]], min:1, note:"Отметь любые: например, только ужин или обед + ужин"},
-  {k:"full", t:"Это вся твоя еда за день?", skip:() => ["b","l","d"].every(x => A.slots.includes(x)), o:[["0","Нет, остальное ем вне плана","калории — доля от дневной нормы на каждый приём"],["1","Да, больше ничего не ем","вся дневная норма делится на выбранные приёмы"]]},
-  {k:"excl", t:"Что не ешь?", multi:[["beef","Говядина"],["chicken","Курица"],["fish","Рыба"],["dairy","Молочное"],["eggs","Яйца"],["gluten","Глютен"]], note:"Можно ничего не выбирать"},
-  {k:"ban", t:"Какие продукты убрать?", ban:true, note:"Нажми на продукт — он не попадёт в меню. Можно ничего не выбирать"},
-  {k:"fav", t:"Любимые продукты", fav:true, note:"Блюда с ними будут чаще попадать в меню. Можно ничего не выбирать"},
-  {k:"time", t:"Сколько времени на готовку?", o:[["25","До 25 минут"],["50","До 50 минут"],["999","Не важно"]]},
-  {k:"tools", t:"Какая посуда и техника есть?", multi:TOOLS, min:1, note:"Покажем только те блюда, которые можно приготовить"},
-  {k:"batch", t:"На обед — то же, что на ужин прошлого дня?", skip:() => !(A.slots.includes("l") && A.slots.includes("d")), o:[["1","Да, обед = вчерашний ужин","готовишь ужин сразу на 2 порции, половину берёшь на обед"],["0","Нет, обед и ужин разные","каждый приём — своё блюдо"]], note:"В понедельник обед подбирается отдельно — вчерашнего ужина ещё нет"},
-  {k:"people", t:"На сколько человек готовишь?", o:[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]], note:"Порции умножаются, калории считаются для тебя"},
-  {k:"budget", t:"Бюджет на продукты в неделю", num:[["budget","₸ на всех",20000]], quick:() => [9000, 13000, 18000].map(v => v * (+A.people || 1)), note:"Ориентир для Алматы на 1 человека: экономно ≈ 9 000 ₸, средне ≈ 13 000 ₸, свободно ≈ 18 000 ₸ в неделю"},
+  {k:"goal", t:"Какая у тебя цель?", short:"Цель", note:"Подстроим калории под неё", o:[["lose","Похудеть","−15–20% калорий","down"],["keep","Держать вес","столько, сколько тратишь","keep"],["gain","Набрать массу","+10–15% калорий","up"]]},
+  {k:"sex", t:"Твой пол", short:"Пол", note:"Нужен для расчёта нормы калорий", o:[["m","Мужской","","male"],["f","Женский","","female"]]},
+  {k:"body", t:"Твои параметры", note:"По ним считаем дневную норму", num:[["age","Возраст",25,"лет"],["height","Рост",175,"см"],["weight","Вес",70,"кг"]]},
+  {k:"act", t:"Сколько двигаешься?", short:"Активность", o:[["1.2","Мало","офис, без тренировок","b1"],["1.375","Немного","1–3 тренировки в неделю","b2"],["1.55","Средне","3–5 тренировок в неделю","b3"],["1.725","Много","каждый день или физическая работа","b4"]]},
+  {k:"slots", t:"Какие приёмы пищи планируем?", short:"Приёмы пищи", multi:[["b","Завтрак","","sunrise"],["l","Обед","","sun"],["d","Ужин","","moon"],["s","Перекус","","apple"]], min:1, note:"Отметь любые — например, только ужин или обед и ужин"},
+  {k:"full", t:"Это вся твоя еда за день?", short:"Вся еда за день", skip:S => ["b","l","d"].every(x => S.slots.includes(x)), o:[["0","Нет, остальное ем вне плана","на каждый приём — его доля дневной нормы"],["1","Да, больше ничего не ем","вся норма делится на выбранные приёмы"]]},
+  {k:"excl", t:"Что не ешь совсем?", short:"Не ем", multi:[["beef","Говядина","","beef"],["chicken","Курица","","chicken"],["fish","Рыба","","fish"],["dairy","Молочное","","milk"],["eggs","Яйца","","egg"],["gluten","Глютен","","wheat"]], note:"Можно ничего не выбирать"},
+  {k:"ban", t:"Какие продукты убрать?", ban:true, note:"Нажми на продукт — он не попадёт в меню"},
+  {k:"fav", t:"Что любишь?", fav:true, note:"Блюда с этими продуктами будут чаще попадать в меню"},
+  {k:"time", t:"Сколько времени готов тратить на готовку?", short:"Время на готовку", o:[["25","До 25 минут","быстрые блюда","bolt"],["50","До 50 минут","почти всё меню","clock"],["999","Не важно","включая долгие блюда","hourglass"]]},
+  {k:"tools", t:"Что есть на кухне?", short:"Посуда и техника", multi:TOOLS, min:1, note:"Покажем только блюда, которые можно приготовить"},
+  {k:"batch", t:"Обед — то, что осталось с ужина?", short:"Обед с ужина", skip:S => !(S.slots.includes("l") && S.slots.includes("d")), o:[["1","Да, готовлю ужин на два раза","половину берёшь на обед следующего дня","box"],["0","Нет, обед и ужин разные","каждый приём — своё блюдо","plates"]], note:"В понедельник обед подберём отдельно"},
+  {k:"people", t:"На сколько человек готовишь?", short:"Сколько человек", seg:true, o:[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]], note:"Порции умножим, калории посчитаем для тебя"},
+  {k:"budget", t:"Бюджет на продукты в неделю", num:[["budget","На всех",20000,"₸"]], quick:S => [9000, 13000, 18000].map(v => v * (+S.people || 1)), note:"Ориентир по Алматы на одного: экономно — 9 000 ₸, средне — 13 000 ₸, свободно — 18 000 ₸. Меню всегда укладывается в бюджет"},
 ];
+const ICO = {check:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', chev:'<svg class="ch" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>', search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>', spark:'<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5"/></svg>', send:'<svg viewBox="0 0 24 24"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg>', copy:'<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>'};
+const TOOL_IC = {pan:"pan", pot_small:"pot_small", pot_big:"pot_big", kazan:"kazan", oven:"oven", multi:"multi", micro:"micro"};
+const SLOT_OF = {b:"sb", l:"sl", d:"sd", s:"ss"};
+const icFor = n => !n ? "" : /^b\d$/.test(n) ? bars(+n[1]) : icon(n);
+const optBtn = (attr, v, l, s, ic, on, multi, cls) => `<button class="opt ${multi ? "multi" : ""} ${on ? "on" : ""} ${cls || ""}" ${attr}="${v}" aria-pressed="${on}">${ic ? `<span class="em">${icFor(ic)}</span>` : ""}<span class="t"><b>${l}</b>${s ? `<small>${s}</small>` : ""}</span><span class="ind">${ICO.check}</span></button>`;
+function qBody(q, S, only) {
+  let h = "";
+  if (q.seg) h += `<div class="seg">${q.o.map(([v, l]) => `<button class="opt ${S[q.k] === v ? "on" : ""}" data-pick="${v}">${l}</button>`).join("")}</div>`;
+  else if (q.o) h += `<div class="opts">${q.o.map(([v, l, s, ic]) => optBtn("data-pick", v, l, s, ic, S[q.k] === v)).join("")}</div>`;
+  if (q.multi) { const arr = S[q.k] || []; h += `<div class="opts">${q.multi.map(([v, l, s, ic]) => optBtn("data-tog", v, l, s, ic || TOOL_IC[v], arr.includes(v), 1, q.k === "slots" ? SLOT_OF[v] : "")).join("")}</div>`; }
+  if (q.ban || q.fav) h += `<div class="banbox"></div>`;
+  if (q.num) h += q.num.filter(([k]) => !only || k === only).map(([k, l, d, u]) => `${only ? "" : `<label class="f" for="n_${k}">${l}</label>`}<div class="field"><input type="text" inputmode="numeric" autocomplete="off" id="n_${k}" class="num" placeholder="${fmt(d)}" value="${k === "budget" && S.budget && S.budgetPpl && S.budgetPpl !== +S.people && !only ? Math.round(S.budget / S.budgetPpl * S.people / 500) * 500 : (S[k] != null ? (k === "budget" ? fmt(S[k]) : S[k]) : "")}"><span>${u}</span></div>`).join("");
+  if (q.quick) h += `<div class="chips">${q.quick(S).map(v => `<button class="chip" data-quick="${v}">${fmt(v)} ₸</button>`).join("")}</div>`;
+  return h;
+}
+function bindQ(el, q, S, onPick, onEnter) {
+  el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { if (el.dataset.busy) return; S[q.k] = b.dataset.pick; haptic(); el.querySelectorAll("[data-pick]").forEach(x => x.classList.toggle("on", x === b)); if (onPick) { el.dataset.busy = 1; setTimeout(() => { delete el.dataset.busy; onPick(); }, 220); } });
+  el.querySelectorAll("[data-tog]").forEach(b => b.onclick = () => { const v = b.dataset.tog, arr = S[q.k] || []; S[q.k] = arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; haptic(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
+  el.querySelectorAll("[data-quick]").forEach(b => b.onclick = () => { el.querySelector("#n_budget").value = fmt(b.dataset.quick); haptic(); });
+  const nb = el.querySelector("#n_budget"); if (nb) nb.oninput = () => { const d = nb.value.replace(/\D/g, ""); nb.value = d ? fmt(+d) : ""; };
+  el.querySelectorAll("input.num").forEach(i => i.onkeydown = e => { if (e.key === "Enter" && onEnter) onEnter(); });
+  const bb = el.querySelector(".banbox"); if (bb) renderPick(bb, q.ban ? "ban" : "fav", S);
+}
+function readNums(q, S, only, root) {
+  for (const [k] of q.num) {
+    if (only && k !== only) continue;
+    const el = (root || document).querySelector("#n_" + k), v = +String(el.value || el.placeholder).replace(/[^\d.,]/g, "").replace(",", ".");
+    const lim = {age: [10, 100], height: [120, 230], weight: [30, 250], budget: [1000, 1e7]}[k];
+    if (!v || (lim && (v < lim[0] || v > lim[1]))) { el.focus(); toast(v ? "Проверь число: " + (lim ? "от " + fmt(lim[0]) + " до " + fmt(lim[1]) : "") : "Введи число"); return false; }
+    S[k] = v;
+  }
+  return true;
+}
 function renderQuiz(el) {
-  const q = Q[quizStep];
-  let h = `<div class="mut">Шаг ${quizStep + 1} из ${Q.length}</div><div class="bar"><i style="width:${(quizStep + 1) / Q.length * 100}%"></i></div><h2>${q.t}</h2>`;
-  if (q.o) h += q.o.map(([v, l, s]) => `<button class="opt ${A[q.k] === v ? "on" : ""}" data-pick="${v}">${l}${s ? `<small>${s}</small>` : ""}</button>`).join("");
-  if (q.multi) { const arr = A[q.k] || []; h += q.multi.map(([v, l]) => `<button class="opt ${arr.includes(v) ? "on" : ""}" data-tog="${v}">${arr.includes(v) ? "✓ " : ""}${l}</button>`).join(""); }
-  if (q.ban || q.fav) h += `<div id="banbox"></div>`;
-  if (q.num) h += q.num.map(([k, l, d]) => `<label class="f" for="n_${k}">${l}</label><input class="num" type="text" inputmode="numeric" autocomplete="off" id="n_${k}" placeholder="${d}" value="${k === "budget" && A.budget && A.budgetPpl && A.budgetPpl !== +A.people ? Math.round(A.budget / A.budgetPpl * A.people / 500) * 500 : (A[k] ?? "")}">`).join("");
-  if (q.quick) h += `<div class="chips">${(typeof q.quick === "function" ? q.quick() : q.quick).map(v => `<button class="chip" data-quick="${v}">${fmt(v)} ₸</button>`).join("")}</div>`;
-  if (q.note) h += `<p class="mut">${q.note}</p>`;
-  h += `<div class="act"><div class="in">${quizStep ? `<button class="btn sec" data-act="qback">Назад</button>` : (PLAN ? `<button class="btn sec" data-act="qcancel">Отмена</button>` : "")}${q.num || q.multi || q.ban || q.fav ? `<button class="btn" data-act="qnext">${stepFrom(quizStep, 1) >= Q.length ? "Собрать рацион" : "Дальше"}</button>` : ""}</div></div>`;
+  const q = Q[quizStep], vis = Q.filter(x => !(x.skip && x.skip(A))), pos = vis.indexOf(q) + 1;
+  let h = `<div class="qtop"><div class="prog">${vis.map((_, i) => `<i class="${i < pos ? "on" : ""}"></i>`).join("")}</div><span class="n">${pos}/${vis.length}</span></div><h2>${q.t}</h2>${q.note ? `<p class="note">${q.note}</p>` : ""}`;
+  h += qBody(q, A);
+  h += `<div class="act"><div class="in">${quizStep ? `<button class="btn sec" data-act="qback">Назад</button>` : (PLAN ? `<button class="btn sec" data-act="qcancel">Отмена</button>` : "")}${q.num || q.multi || q.ban || q.fav ? `<button class="btn" data-act="qnext">${stepFrom(quizStep, 1) >= Q.length ? "Собрать меню" : "Дальше"}</button>` : ""}</div></div>`;
   el.innerHTML = h;
-  el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { if (el.dataset.busy) return; el.dataset.busy = 1; A[q.k] = b.dataset.pick; haptic(); renderQuiz(el); setTimeout(() => { delete el.dataset.busy; qNext(); }, 140); });
-  el.querySelectorAll("[data-tog]").forEach(b => b.onclick = () => { const v = b.dataset.tog, arr = A[q.k] || []; A[q.k] = arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; haptic(); renderQuiz(el); });
-  el.querySelectorAll("[data-quick]").forEach(b => b.onclick = () => { $("n_budget").value = b.dataset.quick; });
-  el.querySelectorAll("input.num").forEach(i => i.onkeydown = e => { if (e.key === "Enter") qNext(); });
-  if (q.ban || q.fav) renderPick($("banbox"), q.ban ? "ban" : "fav");
+  bindQ(el, q, A, qNext, qNext);
 }
 let banQuery = "";
-function renderPick(box, key) {
-  const ban = A[key] || [], other = key === "ban" ? "fav" : "ban", q = banQuery.toLowerCase().replace(/ё/g, "е"), groups = {};
+function renderPick(box, key, S) {
+  S = S || A;
+  const ban = S[key] || [], other = key === "ban" ? "fav" : "ban", q = banQuery.toLowerCase().replace(/ё/g, "е"), groups = {};
   for (const p of D.products) if (!q || p.name.toLowerCase().replace(/ё/g, "е").includes(q)) (groups[p.group] ||= []).push(p);
-  let h = `<input class="search" id="bq" placeholder="Найти продукт" value="${esc(banQuery)}"><div class="mut" style="margin-top:8px">${ban.length ? (key === "ban" ? "Убрано: " : "Выбрано: ") + ban.length + ` · <a href="#" data-banclear="1" style="color:var(--acc)">${key === "ban" ? "вернуть все" : "сбросить"}</a>` : (key === "ban" ? "Ничего не убрано" : "Ничего не выбрано")}</div>`;
-  for (const [g, arr] of Object.entries(groups)) h += `<div class="grp">${g}</div><div class="chips">${arr.map(p => `<button class="chip ${ban.includes(p.id) ? key : ""}" data-ban="${p.id}">${key === "fav" && ban.includes(p.id) ? "★ " : ""}${p.name}</button>`).join("")}</div>`;
-  if (!Object.keys(groups).length) h += `<div class="empty">Ничего не найдено</div>`;
+  let h = `<div class="search">${ICO.search}<input class="bq" placeholder="Найти продукт" value="${esc(banQuery)}" autocomplete="off"></div><div class="mut">${ban.length ? (key === "ban" ? "Убрано: " : "Выбрано: ") + ban.length + ` · <a href="#" data-banclear="1">${key === "ban" ? "вернуть все" : "сбросить"}</a>` : (key === "ban" ? "Пока ничего не убрано" : "Пока ничего не выбрано")}</div>`;
+  for (const [g, arr] of Object.entries(groups)) h += `<div class="grp">${g}</div><div class="chips">${arr.map(p => `<button class="chip ${ban.includes(p.id) ? key : ""}" data-ban="${p.id}">${key === "fav" && ban.includes(p.id) ? icon("heart", "sm") : ""}${p.name}</button>`).join("")}</div>`;
+  if (!Object.keys(groups).length) h += `<div class="empty">Такого продукта нет в базе</div>`;
   box.innerHTML = h;
-  const inp = $("bq"); inp.oninput = () => { banQuery = inp.value; const pos = inp.selectionStart; renderPick(box, key); const n = $("bq"); n.focus(); n.setSelectionRange(pos, pos); };
-  box.querySelectorAll("[data-ban]").forEach(b => b.onclick = () => { const id = b.dataset.ban, arr = A[key] || []; A[key] = arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]; if (A[key].includes(id)) A[other] = (A[other] || []).filter(x => x !== id); haptic(); renderPick(box, key); });
-  const c = box.querySelector("[data-banclear]"); if (c) c.onclick = e => { e.preventDefault(); A[key] = []; renderPick(box, key); };
+  const inp = box.querySelector(".bq"); inp.oninput = () => { banQuery = inp.value; const pos = inp.selectionStart; renderPick(box, key, S); const n = box.querySelector(".bq"); n.focus(); n.setSelectionRange(pos, pos); };
+  box.querySelectorAll("[data-ban]").forEach(b => b.onclick = () => { const id = b.dataset.ban, arr = S[key] || []; S[key] = arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]; if (S[key].includes(id)) S[other] = (S[other] || []).filter(x => x !== id); haptic(); renderPick(box, key, S); });
+  const c = box.querySelector("[data-banclear]"); if (c) c.onclick = e => { e.preventDefault(); S[key] = []; renderPick(box, key, S); };
+}
+// ---------- правка одного ответа из профиля ----------
+function openEdit(k, only) {
+  const q = Q.find(x => x.k === k), E = JSON.parse(JSON.stringify(A)); banQuery = "";
+  const title = only ? q.num.find(n => n[0] === only)[1] : q.t;
+  const md = document.createElement("div"); md.className = "modal";
+  const auto = q.o && !q.num;
+  md.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(title)}"><div class="grab"></div><h2>${title}</h2>${q.note && !only ? `<p class="sub">${q.note}</p>` : `<p class="sub"></p>`}<div class="edbox">${qBody(q, E, only)}</div><div class="foot">${auto ? `<button class="btn full sec" data-act="close">Отмена</button>` : `<button class="btn full" data-esave="1">Сохранить</button>`}</div></div>`;
+  md.onclick = e => { if (e.target === md) closeModal(); };
+  document.body.appendChild(md);
+  const box = md.querySelector(".edbox");
+  const save = () => {
+    if (q.num && !readNums(q, E, only, md)) return;
+    if (q.min && (E[q.k] || []).length < q.min) return toast("Выбери хотя бы один вариант");
+    if (k === "budget") E.budgetPpl = +E.people;
+    A = E; ST.set("answers", A); closeModal();
+    if (PLAN) build(PLAN.seed + 1, {stay: true, msg: "Сохранено, меню обновлено"}); else { render(); toast("Сохранено"); }
+  };
+  bindQ(box, q, E, auto ? save : null, save);
+  md.querySelector("[data-esave]") && (md.querySelector("[data-esave]").onclick = save);
+  const inp = md.querySelector("input.num"); if (inp) setTimeout(() => { inp.focus(); inp.select(); }, 300);
+  try { tg && tg.BackButton.show(); } catch (e) {}
 }
 function openBanEditor(key) {
   banQuery = "";
   const md = document.createElement("div"); md.className = "modal";
-  md.innerHTML = `<div class="sheet"><h2>${key === "ban" ? "Нежелательные продукты" : "Любимые продукты"}</h2><div class="mut">${key === "ban" ? "Блюда с ними не попадут в меню" : "Блюда с ними будут попадать в меню чаще"}</div><div id="banbox2"></div><div class="row"><button class="btn" data-act="bansave">Готово</button></div></div>`;
+  md.innerHTML = `<div class="sheet"><div class="grab"></div><h2>${key === "ban" ? "Нежелательные продукты" : "Любимые продукты"}</h2><p class="sub">${key === "ban" ? "Блюда с ними не попадут в меню" : "Блюда с ними будут попадать в меню чаще"}</p><div id="banbox2" class="banbox2"></div><div class="foot"><button class="btn full" data-act="bansave">Готово</button></div></div>`;
   md.onclick = e => { if (e.target === md) saveBan(); };
-  document.body.appendChild(md); renderPick($("banbox2"), key);
+  document.body.appendChild(md); renderPick($("banbox2"), key, A);
   try { tg && tg.BackButton.show(); } catch (e) {}
 }
 function saveBan() {
   closeModal(); ST.set("answers", A);
-  if (PLAN) { build(PLAN.seed); tab = "me"; render(); toast("Меню пересобрано"); } else render();
+  if (PLAN) build(PLAN.seed + 1, {stay: true, msg: "Сохранено, меню обновлено"}); else render();
 }
 function qNext() {
   const q = Q[quizStep];
-  if (q.num) for (const [k] of q.num) {
-    const el = $("n_" + k), v = +String(el.value || el.placeholder).replace(/[^\d.,]/g, "").replace(",", ".");
-    if (!v) { el.focus(); return; } A[k] = v;
-  }
+  if (q.num && !readNums(q, A)) return;
   if (q.min && (A[q.k] || []).length < q.min) return toast("Выбери хотя бы один вариант");
   if (q.k === "budget") A.budgetPpl = +A.people;
   ST.set("answers", A);
   const n = stepFrom(quizStep, 1);
-  if (n < Q.length) { quizStep = n; render(); } else { quizStep = -1; build(Date.now() % 100000); }
+  if (n < Q.length) { quizStep = n; render(); window.scrollTo(0, 0); } else { quizStep = -1; build(Date.now() % 100000); }
 }
-function stepFrom(i, dir) { i += dir; while (i >= 0 && i < Q.length && Q[i].skip && Q[i].skip()) i += dir; return i; }
+function stepFrom(i, dir) { i += dir; while (i >= 0 && i < Q.length && Q[i].skip && Q[i].skip(A)) i += dir; return i; }
 
 // ---------- генерация ----------
 function rng(a) { // mulberry32: соседние seed дают независимые последовательности
@@ -289,7 +571,10 @@ function pools() {
   };
 }
 const multFor = (r, tk) => Math.min(2.5, Math.max(0.6, Math.round(tk / RN[r.id][0] * 10) / 10));
-function build(seed) {
+const avgKc = plan => Math.round(plan.days.reduce((t, d) => t + plan.slots.reduce((u, s) => u + RN[d[s].id][0] * d[s].m, 0), 0) / 7);
+const lowKey = () => [A.budget, A.people, A.goal, (A.slots || []).join(""), A.weight].join("|");
+function build(seed, o = {}) {
+  const moved = absorbBought();
   const kc = target(), sh = shares(), batch = isBatch(), pool = pools();
   const slots = slotsSel();
   for (const s of slots) if (!pool[s].length) { toast("Нет подходящих блюд для «" + SLOT[s] + "» — верни часть продуктов, добавь посуду или время"); return; }
@@ -303,8 +588,7 @@ function build(seed) {
         const tk = kc * sh[s];
         const c = pool[s].map(r => {
           const m = multFor(r, tk), u = used[r.id] || 0, raw = tk / RN[r.id][0];
-          const big = raw > 1.6 ? (raw - 1.6) * 4 : 0;   // не ставим «суп ×2,2» — лучше сытное блюдо
-          // цена за 1000 ккал, нормированная к ~1; случайная часть всегда весомая, чтобы «Новое меню» реально менялось
+          const big = raw > 1.6 ? (raw - 1.6) * 4 : 0;
           return {r, m, sc: (u >= limit[s] ? 1e6 : u * 3) + big + rnd() * 4 - favN(r) * 1.2 + w * recipeCost(r, m) / (RN[r.id][0] * m) * 1.6};
         }).sort((a, b) => a.sc - b.sc)[0];
         used[c.r.id] = (used[c.r.id] || 0) + (s === "d" && batch ? 2 : 1);
@@ -314,43 +598,151 @@ function build(seed) {
     }
     return {days, slots, kc, ppl: +A.people, seed};
   };
-  let plan = null, cost = 0;
-  for (const w of [0, .5, 1, 2, 3.5, 6, 12]) {
-    plan = gen(w, seed); cost = shopping(plan).totals.mix;
-    if (cost <= A.budget) break;
+  const cost = p => shopping(p).totals.mix;
+  let plan = null;
+  for (const w of [0, .5, 1, 2, 3.5, 6, 12, 20]) { const p = gen(w, seed); if (cost(p) <= A.budget) { plan = p; break; } }
+  if (!plan) {
+    // полное меню в бюджет не влезает: считаем, сколько нужно, и вариант с уменьшенными порциями
+    let cheap = Infinity, cheapPlan = null;
+    for (let i = 0; i < 6; i++) { const p = gen(20, seed + 101 + i), c = cost(p); if (c < cheap) { cheap = c; cheapPlan = p; } }
+    const need = Math.ceil(cheap * 1.03 / 500) * 500;
+    let fit = null;
+    for (const base of [gen(6, seed), cheapPlan]) {
+      const was = avgKc(base); let f = A.budget / cost(base);
+      for (let t = 0; t < 25 && f >= 0.45 && !fit; t++, f *= 0.97) {
+        const p = {...base, days: base.days.map(d => Object.fromEntries(Object.entries(d).map(([s, m]) => [s, {...m, m: Math.round(m.m * f * 100) / 100}])))};
+        if (cost(p) <= A.budget) fit = Object.assign(p, {cut: {was, now: avgKc(p), f, need}});
+      }
+      if (fit) break;
+    }
+    if (o.mode === "raise") { A.budget = need; A.budgetPpl = +A.people; ST.set("answers", A); return build(seed, {...o, mode: null, msg: "Бюджет — " + fmt(need) + " ₸, меню собрано"}); }
+    if (fit && (o.mode === "fit" || A.lowOk === lowKey())) { if (o.mode === "fit") { A.lowOk = lowKey(); ST.set("answers", A); } plan = fit; }
+    else return askBudget(seed, o, need, fit, cheap);
   }
-  if (cost > A.budget) {
-    // в бюджет не влезли: оставляем разнообразное экономное меню (иначе «Новое меню» всегда одинаковое)
-    plan = gen(1, seed); cost = shopping(plan).totals.mix;
-    let min = Infinity;
-    for (let i = 0; i < 6; i++) { const c = shopping(gen(20, seed + 101 + i)).totals.mix; if (c < min) min = c; }
-    plan.minCost = Math.ceil(min / 500) * 500; plan.okBudget = Math.ceil(min * 1.12 / 1000) * 1000;
-  }
-  PLAN = plan; DONE = {}; ST.set("plan", PLAN); ST.set("done", DONE);
-  tab = "plan"; render(); window.scrollTo(0, 0);
+  plan.at = Date.now(); PLAN = plan; DONE = {}; ST.set("plan", PLAN); ST.set("done", DONE);
+  if (moved) o.msg = (o.msg || "Меню обновлено") + ". Купленное — в «Есть дома»";
+  if (!o.stay) tab = "plan";
+  render(); if (!o.stay) window.scrollTo(0, 0);
+  if (o.msg) toast(o.msg);
+}
+function askBudget(seed, o, need, fit, cheap) {
+  closeModal();
+  const gain = A.goal === "gain", md = document.createElement("div"); md.className = "modal";
+  const title = gain ? "Для набора массы бюджета мало" : "Бюджета не хватает на полное меню";
+  let txt = `Полное меню под твои ответы стоит от ${fmt(cheap)} ₸ в неделю, а бюджет — ${fmt(A.budget)} ₸.`;
+  if (fit) txt += gain
+    ? ` Уложиться можно, но порции станут меньше: около ${fmt(fit.cut.now)} ккал в день вместо ${fmt(fit.cut.was)}. Для набора массы этого мало — вес, скорее всего, расти не будет.`
+    : ` Уложиться можно, но порции станут меньше: около ${fmt(fit.cut.now)} ккал в день вместо ${fmt(fit.cut.was)}.`;
+  else txt += ` Меньше чем за ${fmt(need)} ₸ собрать меню не получится.`;
+  md.innerHTML = `<div class="sheet ask" role="alertdialog" aria-label="${title}"><div class="grab"></div><div class="illo sm">${ILLO_WALLET}</div><h2>${title}</h2><p class="sub" style="font-size:16px;color:var(--ink)">${txt}</p>
+  ${fit ? `<p class="mut">${gain ? "Точно собрать меню на минимальную сумму?" : "Как поступим?"}</p>` : ""}
+  <div class="foot"><button class="btn full" data-bud="raise">Поднять бюджет до ${fmt(need)} ₸</button>${fit ? `<button class="btn full sec" data-bud="fit" style="margin-top:10px">${gain ? "Да, меню на " : "Уложиться в "}${fmt(A.budget)} ₸</button>` : ""}<button class="btn full ghost" data-bud="edit" style="margin-top:10px">Изменить бюджет</button></div></div>`;
+  document.body.appendChild(md);
+  md.querySelectorAll("[data-bud]").forEach(b => b.onclick = () => {
+    const v = b.dataset.bud; closeModal();
+    if (v === "edit") { if (!PLAN) { quizStep = Q.findIndex(x => x.k === "budget"); render(); } else openEdit("budget"); return; }
+    build(seed, {...o, mode: v});
+  });
+  try { tg && tg.BackButton.show(); } catch (e) {}
 }
 function swapMeal(d, s) {
   const day = PLAN.days[d], cur = day[s], pool = pools()[s === "l" ? "l" : s];
   const inWeek = new Set(PLAN.days.flatMap(x => PLAN.slots.map(k => x[k].id)));
   const opts = pool.filter(r => r.id !== cur.id).sort((a, b) => (inWeek.has(a.id) - inWeek.has(b.id)) || (favN(b) - favN(a)) || (Math.random() - .5));
   if (!opts.length) return toast("Нет других подходящих блюд");
-  const r = opts[0], tk = PLAN.kc * shares()[s];
-  day[s] = {id: r.id, m: multFor(r, tk)};
-  if (s === "d" && isBatch() && PLAN.days[d + 1] && PLAN.days[d + 1].l.left) PLAN.days[d + 1].l = {...day[s], left: 1};
-  ST.set("plan", PLAN); haptic(); toast("Заменено: " + r.name); render();
+  const tk = PLAN.kc * shares()[s], f = PLAN.cut ? PLAN.cut.f : 1, next = PLAN.days[d + 1];
+  for (const r of opts) {
+    const was = {cur: day[s], nl: next && next.l}, m = Math.round(multFor(r, tk) * f * 100) / 100;
+    day[s] = {id: r.id, m}; if (s === "d" && isBatch() && next && next.l.left) next.l = {...day[s], left: 1};
+    if (shopping(PLAN).totals.mix <= A.budget) { ST.set("plan", PLAN); haptic(); toast("Заменено: " + r.name); return render(); }
+    day[s] = was.cur; if (next) next.l = was.nl;
+  }
+  toast("Других блюд в пределах бюджета нет");
 }
 function shopping(plan) {
   const need = {};
   for (const day of plan.days) for (const s of plan.slots) { const m = day[s]; for (const [pid, a] of Object.entries(R[m.id].ing)) need[pid] = (need[pid] || 0) + a * m.m * plan.ppl; }
-  const items = Object.entries(need).map(([pid, amt]) => {
-    if (P[pid].unit === "pc") amt = Math.ceil(amt);
+  const items = Object.entries(need).map(([pid, total]) => {
+    if (P[pid].unit === "pc") total = Math.ceil(total);
+    const st = STOCK[pid], have = st ? (st.always ? total : Math.min(total, st.a || 0)) : 0;
+    let amt = Math.max(0, total - have); if (P[pid].unit === "pc") amt = Math.ceil(amt);
+    if (amt < total * 0.04) amt = 0;   // остаток в пару грамм не покупаем
     const per = {}; for (const s of STORES) per[s] = amtCost(pid, amt, s);
-    const pk = packInfo(pid, amt);
-    return {pid, amt, mix: amtCost(pid, amt), per, pk, buy: pk ? amtCost(pid, pk.amt).sum : amtCost(pid, amt).sum};
+    const pk = amt ? packInfo(pid, amt) : null;
+    const buy = amt ? (pk ? amtCost(pid, pk.amt).sum : amtCost(pid, amt).sum) : 0;
+    let full = buy; if (have) { const pf = packInfo(pid, total); full = pf ? amtCost(pid, pf.amt).sum : amtCost(pid, total).sum; }
+    return {pid, need: total, have, amt, home: !amt, mix: amtCost(pid, amt), per, pk, buy, saved: Math.max(0, full - buy)};
   });
-  const totals = {mix: 0, receipt: items.reduce((t, i) => t + i.buy, 0)}; for (const s of STORES) totals[s] = {sum: 0, miss: 0};
-  for (const it of items) { totals.mix += it.mix.sum; for (const s of STORES) { totals[s].sum += it.per[s].sum; if (it.per[s].est) totals[s].miss++; } }
+  const totals = {mix: 0, receipt: items.reduce((t, i) => t + i.buy, 0), saved: items.reduce((t, i) => t + i.saved, 0)}; for (const s of STORES) totals[s] = {sum: 0, miss: 0};
+  for (const it of items) { if (it.home) continue; totals.mix += it.mix.sum; for (const s of STORES) { totals[s].sum += it.per[s].sum; if (it.per[s].est) totals[s].miss++; } }
   return {items, totals};
+}
+// ---------- дома: запасы ----------
+const UNIT = pid => P[pid].unit === "pc" ? "шт" : P[pid].unit === "kg" ? "г" : "мл";
+function absorbBought() {   // купленное, но не приготовленное — переносим в «Дома»
+  if (!PLAN || !Object.values(DONE).some(Boolean)) return false;
+  for (const it of shopping(PLAN).items) if (DONE[it.pid] && it.amt) { const st = STOCK[it.pid] || {a: 0}; if (!st.always) st.a = (st.a || 0) + (it.pk ? it.pk.amt : it.amt); STOCK[it.pid] = st; }
+  DONE = {}; ST.set("done", DONE); ST.set("stock", STOCK); return true;
+}
+function newWeek() {   // неделя приготовлена: из запасов уходит то, что съели, остатки упаковок остаются
+  const L = shopping(PLAN);
+  for (const it of L.items) {
+    const st = STOCK[it.pid]; if (st && st.always) continue;
+    const avail = (st ? st.a || 0 : 0) + (DONE[it.pid] ? (it.pk ? it.pk.amt : it.amt) : 0), left = Math.max(0, avail - it.need);
+    const small = P[it.pid].unit === "pc" ? left < 1 : left < Math.min(30, (P[it.pid].pack || 1000) * .05);
+    if (small) delete STOCK[it.pid]; else STOCK[it.pid] = {a: P[it.pid].unit === "pc" ? Math.floor(left) : Math.round(left / 5) * 5};
+  }
+  DONE = {}; ST.set("done", DONE); ST.set("stock", STOCK);
+  build(PLAN.seed + 7, {msg: "Новая неделя — остатки продуктов учтены"});
+}
+function askNewWeek() {
+  closeModal();
+  const md = document.createElement("div"); md.className = "modal";
+  md.innerHTML = `<div class="sheet" role="alertdialog" aria-label="Новая неделя"><div class="grab"></div><h2>Начать новую неделю?</h2><p class="sub" style="color:var(--ink);font-size:16px">Соберём новое меню. Всё, что съели по текущему меню, спишем, а остатки купленного — например, полпачки гречки — перенесём в «Есть дома».</p><div class="foot"><button class="btn full" data-act="nwgo">Начать новую неделю</button><div class="row"><button class="btn sec" data-act="close">Отмена</button></div></div></div>`;
+  md.onclick = e => { if (e.target === md) closeModal(); };
+  document.body.appendChild(md);
+  md.querySelector("[data-act=nwgo]").onclick = () => { closeModal(); newWeek(); };
+}
+function openStock(pid, needAmt) {
+  closeModal();
+  const p = P[pid], st = STOCK[pid] || {}, u = UNIT(pid), md = document.createElement("div"); md.className = "modal";
+  const chips = [["0", "Нет"]];
+  if (needAmt) chips.push([String(Math.ceil(needAmt)), "Хватит на неделю"]);
+  if (p.pack) chips.push([String(p.pack), "Целая упаковка"]);
+  md.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(p.name)}"><div class="grab"></div><h2>${p.name}</h2><p class="sub">${needAmt ? "На эту неделю нужно " + amtStr(pid, needAmt) + ". " : ""}Сколько уже есть дома?</p>
+  <div class="field"><input type="text" inputmode="numeric" autocomplete="off" id="st_a" value="${st.a ? st.a : ""}" placeholder="Сколько"><span>${u}</span></div>
+  <div class="chips">${chips.map(([v, l]) => `<button class="chip" data-sa="${v}">${l}</button>`).join("")}</div>
+  <button class="opt multi ${st.always ? "on" : ""}" id="st_al" aria-pressed="${!!st.always}" style="margin-top:8px"><span class="em">${icon("box")}</span><span class="t"><b>Всегда есть дома</b><small>не добавлять в покупки — например, масло или мука про запас</small></span><span class="ind">${ICO.check}</span></button>
+  <div class="foot"><button class="btn full" id="st_save">Сохранить</button>${STOCK[pid] ? `<div class="row"><button class="btn sec" id="st_del">Убрать из «Дома»</button></div>` : ""}</div></div>`;
+  md.onclick = e => { if (e.target === md) closeModal(); };
+  document.body.appendChild(md);
+  const inp = md.querySelector("#st_a"), al = md.querySelector("#st_al");
+  md.querySelectorAll("[data-sa]").forEach(b => b.onclick = () => { inp.value = b.dataset.sa === "0" ? "" : b.dataset.sa; haptic(); });
+  al.onclick = () => { al.classList.toggle("on"); al.setAttribute("aria-pressed", al.classList.contains("on")); haptic(); };
+  md.querySelector("#st_save").onclick = () => {
+    const a = +String(inp.value).replace(/[^\d.,]/g, "").replace(",", ".") || 0, always = al.classList.contains("on");
+    if (a > 0 || always) STOCK[pid] = {a, always}; else delete STOCK[pid];
+    ST.set("stock", STOCK); closeModal(); render(); toast(a > 0 || always ? "Сохранено в «Дома»" : "Убрано из «Дома»");
+  };
+  const del = md.querySelector("#st_del"); if (del) del.onclick = () => { delete STOCK[pid]; ST.set("stock", STOCK); closeModal(); render(); toast("Убрано из «Дома»"); };
+  try { tg && tg.BackButton.show(); } catch (e) {}
+}
+function openStockAdd() {
+  closeModal(); banQuery = "";
+  const md = document.createElement("div"); md.className = "modal";
+  md.innerHTML = `<div class="sheet" role="dialog" aria-label="Добавить продукт"><div class="grab"></div><h2>Что есть дома?</h2><p class="sub">Выбери продукт, потом укажи, сколько его</p><div class="pickbox"></div><div class="foot"><button class="btn full sec" data-act="close">Закрыть</button></div></div>`;
+  md.onclick = e => { if (e.target === md) closeModal(); };
+  document.body.appendChild(md);
+  const box = md.querySelector(".pickbox");
+  const draw = () => {
+    const q = banQuery.toLowerCase().replace(/ё/g, "е"), groups = {};
+    for (const p of D.products) if (!q || p.name.toLowerCase().replace(/ё/g, "е").includes(q)) (groups[p.group] ||= []).push(p);
+    box.innerHTML = `<div class="search">${ICO.search}<input class="bq" placeholder="Найти продукт" value="${esc(banQuery)}" autocomplete="off"></div>` + Object.entries(groups).map(([g, arr]) => `<div class="grp">${g}</div><div class="chips">${arr.map(p => `<button class="chip ${STOCK[p.id] ? "on" : ""}" data-sp="${p.id}">${p.name}</button>`).join("")}</div>`).join("") + (Object.keys(groups).length ? "" : `<div class="empty">Такого продукта нет в базе</div>`);
+    const inp = box.querySelector(".bq"); inp.oninput = () => { banQuery = inp.value; const pos = inp.selectionStart; draw(); const n = box.querySelector(".bq"); n.focus(); n.setSelectionRange(pos, pos); };
+    box.querySelectorAll("[data-sp]").forEach(b => b.onclick = () => { const pid = b.dataset.sp, it = PLAN && shopping(PLAN).items.find(i => i.pid === pid); openStock(pid, it ? it.need : 0); });
+  };
+  draw();
+  try { tg && tg.BackButton.show(); } catch (e) {}
 }
 const portionG = (r, m) => Object.entries(r.ing).reduce((t, [pid, a]) => t + (P[pid].unit === "pc" ? a * P[pid].pcw : a), 0) * m * 0.85; // ~15% уходит при готовке
 const dayNutr = day => { const t = [0,0,0,0]; for (const s of PLAN.slots) RN[day[s].id].forEach((v, i) => t[i] += v * day[s].m); return t; };
@@ -365,98 +757,174 @@ function render() {
   if (quiz) return renderQuiz(el);
   ({plan: vPlan, list: vList, prices: vPrices, recipes: vRecipes, me: vMe})[tab](el);
 }
-window.go = t => { tab = t; haptic(); render(); window.scrollTo(0, 0); };
+window.go = t => { if (tab === t) return window.scrollTo({top: 0, behavior: "smooth"}); tab = t; haptic(); render(); window.scrollTo(0, 0); };
 function back() { const m = document.querySelector(".modal"); if (m) return $("banbox2") ? saveBan() : closeModal(); if (quizStep > 0) { quizStep = Math.max(0, stepFrom(quizStep, -1)); render(); } }
 function startQuiz() { quizStep = 0; render(); window.scrollTo(0, 0); }
+const ILLO_BAG = `<svg viewBox="0 0 300 180" role="img" aria-label="Пакет с продуктами"><ellipse cx="150" cy="170" rx="122" ry="7" fill="#DCE2D6"/>
+<g transform="rotate(-16 118 70)"><rect x="100" y="8" width="32" height="118" rx="16" fill="#E8B86B"/><path d="M108 32l16-7M108 52l16-7M108 72l16-7" stroke="#C48A3A" stroke-width="3.5" stroke-linecap="round"/></g>
+<path d="M196 74c-6-30 4-56 22-68-6 22-8 44-8 68z" fill="#5E9F2E"/><path d="M206 74c2-26 14-44 34-52-12 18-18 34-20 52z" fill="#82BF4E"/>
+<g transform="rotate(24 168 52)"><ellipse cx="168" cy="56" rx="15" ry="30" fill="#6A4C9E"/><ellipse cx="163" cy="48" rx="4" ry="12" fill="#8466B8"/><path d="M158 28q10-8 20 0l-4 6h-12z" fill="#5E9F2E"/></g>
+<rect x="64" y="64" width="172" height="17" rx="5" fill="#D6AA63"/><path d="M72 78h156l-11 86H83z" fill="#EBCB92"/>
+<rect x="128" y="102" width="44" height="44" rx="10" fill="#FFF6E6"/><rect x="134" y="108" width="14" height="14" rx="4" fill="#E99A1F"/><rect x="152" y="108" width="14" height="14" rx="4" fill="#DD4B32"/><rect x="134" y="126" width="14" height="14" rx="4" fill="#6A4C9E"/><rect x="152" y="126" width="14" height="14" rx="4" fill="#5E9F2E"/>
+<circle cx="252" cy="150" r="20" fill="#DD4B32"/><circle cx="245" cy="143" r="5" fill="#EE7A62"/><path d="M252 131l4 5 6-1-3 5 3 4-6-1-4 4-1-6-6-2 6-2z" fill="#5E9F2E"/>
+<circle cx="280" cy="162" r="10" fill="#E99A1F"/><circle cx="52" cy="152" r="17" fill="#7DB843"/><path d="M52 136c0-6 3-9 8-10" stroke="#4E7F25" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M55 133c6-6 13-4 14-1-5 4-10 4-14 1z" fill="#5E9F2E"/></svg>`;
+const ILLO_WALLET = `<svg viewBox="0 0 140 96" aria-hidden="true"><ellipse cx="70" cy="90" rx="52" ry="5" fill="#DCE2D6"/><circle cx="92" cy="26" r="17" fill="#E99A1F"/><circle cx="92" cy="26" r="11" fill="none" stroke="#FFF1D6" stroke-width="3"/><circle cx="64" cy="20" r="12" fill="#F2B44E"/>
+<rect x="22" y="32" width="96" height="54" rx="13" fill="#14724A"/><path d="M22 46a13 13 0 0 1 13-13h70a13 13 0 0 1 13 13v2H22z" fill="#0F5C3B"/><rect x="88" y="52" width="34" height="20" rx="10" fill="#DCEEE2"/><circle cx="100" cy="62" r="4" fill="#14724A"/></svg>`;
+const SC = {b: "sb", l: "sl", d: "sd", s: "ss"}, CATC = {breakfast: "sb", soup: "sl", main: "sd", snack: "ss"}, MI = {b: "ib", l: "il", d: "id", s: "is"};
+const today = () => (new Date().getDay() + 6) % 7;
+const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const k = n % 10; return n > 10 && n < 20 ? c : k > 1 && k < 5 ? b : k === 1 ? a : c; };
+let introPlayed = false;
 function noPlan(el, what) {
-  el.innerHTML = `<div class="hero"><h1>${esc(D.appName || "Еда на неделю")}</h1><p>Меню на 7 дней под твою цель и бюджет, список покупок и цены Magnum, Small и Arbuz. Бесплатно.</p><button class="btn" data-act="quiz">Подобрать за 2 минуты</button></div>${what ? `<div class="empty">${what}</div>` : ""}`;
+  el.innerHTML = `<div class="hero"><div class="illo ${introPlayed ? "" : "anim"}">${ILLO_BAG}</div><h1>${esc(D.appName || "Еда на неделю")}</h1><p>Меню на 7 дней под твою цель и бюджет — с рецептами и списком покупок по ценам Алматы.</p>
+  ${what ? `<div class="card"><div class="mut" style="font-size:15px">${what}</div></div>` : `<div class="feats"><div><span class="em">${icon("grid")}</span><span><b>Меню с КБЖУ</b> — завтрак, обед, ужин или только то, что нужно</span></div><div><span class="em">${icon("bag")}</span><span><b>Список покупок</b> с упаковками и ценами Magnum, Small, Arbuz — в рамках бюджета</span></div><div><span class="em">${icon("steps")}</span><span><b>Рецепты по шагам</b> с таймерами — под твою посуду</span></div></div>`}
+  <button class="btn full" data-act="quiz">Подобрать меню — 2 минуты</button><p class="mut" style="text-align:center">Бесплатно, без регистрации</p></div>`;
+  introPlayed = true;
 }
 function vPlan(el) {
   if (!PLAN) return noPlan(el);
-  const T = shopping(PLAN).totals, over = T.mix > A.budget, day = PLAN.days[curDay], n = dayNutr(day);
-  let h = `<div class="kpi"><div><b>${fmt(dayNutr(PLAN.days[0])[0] && Math.round(PLAN.days.reduce((t, d) => t + dayNutr(d)[0], 0) / 7))}</b><span>ккал в меню${isFull() ? "" : " из " + fmt(PLAN.kc)}</span></div><div><b>${fmt(T.mix)} ₸</b><span>${PLAN.ppl > 1 ? "неделя, " + PLAN.ppl + " чел." : "продукты / нед"}</span></div><div><b style="color:${over ? "var(--warn)" : "var(--acc)"}">${over ? "+" : "−"}${fmt(Math.abs(T.mix - A.budget))}</b><span>${over ? "сверх бюджета" : "запас"}</span></div></div>`;
-  if (over) h += `<div class="card" style="border-color:var(--warn)"><b>Бюджет мал${PLAN.ppl > 1 ? " для " + PLAN.ppl + " чел." : ""}</b><div class="mut" style="margin:4px 0 10px">Меню дороже на ${fmt(T.mix - A.budget)} ₸.${PLAN.minCost ? " Самое экономное меню под твои ответы — около " + fmt(PLAN.minCost) + " ₸." : ""}</div><div class="row" style="display:flex;gap:8px">${PLAN.okBudget && PLAN.okBudget > A.budget ? `<button class="btn" style="flex:1" data-act="budget" data-v="${PLAN.okBudget}">Бюджет ${fmt(PLAN.okBudget)} ₸</button>` : ""}<button class="btn sec" style="flex:1" data-act="budget" data-v="${Math.ceil(T.mix / 1000) * 1000}">Оставить как есть</button></div></div>`;
-  h += `<div class="daybar">${DAYS.map((d, i) => `<button class="${i === curDay ? "on" : ""}" data-day="${i}"><b>${d}</b>${fmt(dayNutr(PLAN.days[i])[0])}</button>`).join("")}</div>`;
-  h += `<div class="card"><h2>${DAYS_FULL[curDay]}</h2>`;
+  const T = shopping(PLAN).totals, over = T.mix > A.budget, day = PLAN.days[curDay], n = dayNutr(day), td = today();
+  const pct = Math.min(100, T.mix / A.budget * 100);
+  let h = "";
+  h += `<div class="wk"><div class="top"><div><div class="mut">Продукты на неделю${PLAN.ppl > 1 ? " · " + PLAN.ppl + " чел." : ""}</div><div class="sum">${fmt(T.mix)} ₸</div></div></div>
+  <div class="meter ${over ? "over" : ""}"><i style="width:${pct}%"></i></div>
+  <div class="meta"><span>бюджет ${fmt(A.budget)} ₸</span>${over ? `<b class="o">+${fmt(T.mix - A.budget)} ₸ сверх</b>` : `<b>запас ${fmt(A.budget - T.mix)} ₸</b>`}</div>
+  <div class="week" role="tablist">${DAYS.map((d, i) => `<button class="${i === curDay ? "on" : ""} ${i === td ? "today" : ""}" data-day="${i}" role="tab" aria-selected="${i === curDay}" aria-label="${DAYS_FULL[i]}"><b>${d}</b>${PLAN.slots.map(s => `<i class="${MI[s]}"></i>`).join("")}<small>${fmt(dayNutr(PLAN.days[i])[0])}</small></button>`).join("")}</div></div>`;
+  if (PLAN.at && Date.now() - PLAN.at > 6.5 * 864e5) h += `<div class="alert info" style="background:var(--acc2)"><h3 style="color:var(--acc)">Прошла неделя</h3><div class="mut">Начни новую — соберём свежее меню, а остатки продуктов учтём в «Есть дома».</div><div class="btns"><button class="btn sm" data-act="newweek">Начать новую неделю</button></div></div>`;
+  if (PLAN.cut) h += `<div class="alert info"><h3>${A.goal === "gain" ? "Меню на минимальную сумму" : "Порции уменьшены под бюджет"}</h3><div class="mut">Около ${fmt(PLAN.cut.now)} ккал в день вместо ${fmt(PLAN.cut.was)}.${A.goal === "gain" ? " Для набора массы этого мало." : ""} Полное меню — от ${fmt(PLAN.cut.need)} ₸.</div><div class="btns"><button class="btn sm" data-act="budget" data-v="${PLAN.cut.need}">Бюджет ${fmt(PLAN.cut.need)} ₸</button></div></div>`;
+  else if (over) h += `<div class="alert"><h3>Цены выросли — меню дороже бюджета</h3><div class="mut">На ${fmt(T.mix - A.budget)} ₸. Пересобери меню, чтобы уложиться.</div><div class="btns"><button class="btn sm" data-act="rebuild">Пересобрать</button></div></div>`;
+  const kP = n[1] * 4, kF = n[2] * 9, kC = n[3] * 4, kT = kP + kF + kC || 1;
+  h += `<div class="dayh"><h2>${curDay === td ? "Сегодня" : DAYS_FULL[curDay]}</h2><span>${fmt(n[0])} ккал</span></div>
+  <div class="macro" aria-hidden="true"><i style="flex:${kP / kT}"></i><i style="flex:${kF / kT}"></i><i style="flex:${kC / kT}"></i></div>
+  <div class="mleg"><span>белки ${fmt(n[1])} г</span><span>жиры ${fmt(n[2])} г</span><span>углеводы ${fmt(n[3])} г</span></div><div class="meals">`;
   for (const s of PLAN.slots) {
     const m = day[s], r = R[m.id], k = RN[r.id].map(v => v * m.m);
-    h += `<div class="meal" data-open="${r.id}" data-m="${m.m}" data-slot="${s}"><div><div class="tag">${SLOT[s]}${m.left ? " · со вчера" : ""}</div><b>${r.name}</b> <span class="mut">· ≈${fmt(Math.round(portionG(r, m.m) / 10) * 10)} г</span></div><div class="k">${fmt(k[0])} ккал<br>Б${fmt(k[1])} Ж${fmt(k[2])} У${fmt(k[3])}</div></div>`;
+    h += `<button class="meal ${SC[s]}" data-open="${r.id}" data-m="${m.m}" data-slot="${s}"><div class="row1"><span class="slot">${SLOT[s]}${m.left ? " · с ужина" : ""}</span><span class="g">≈${fmt(Math.round(portionG(r, m.m) / 10) * 10)} г${PLAN.ppl > 1 ? " × " + PLAN.ppl : ""}</span></div><h3>${r.name}</h3><div class="nums"><span><b>${fmt(k[0])}</b> ккал</span><span>Б ${fmt(k[1])}</span><span>Ж ${fmt(k[2])}</span><span>У ${fmt(k[3])}</span>${m.left ? "" : `<span>${r.time ? r.time + " мин" : "без готовки"}</span>`}</div></button>`;
   }
-  h += `<div class="mut" style="margin-top:6px">Итого: ${fmt(n[0])} ккал · Б ${fmt(n[1])} г · Ж ${fmt(n[2])} г · У ${fmt(n[3])} г</div></div>`;
+  h += `</div>`;
   const meals = PLAN.days.length * PLAN.slots.filter(s => s !== "s").length * PLAN.ppl, cafe = meals * (D.cafe || 2500), save = cafe - T.receipt;
-  if (save > 0) h += `<div class="card" style="background:var(--acc2);border:0"><b>Экономия ≈ ${fmt(save)} ₸ в неделю</b><div class="mut">Те же ${meals} приёмов пищи в кафе ≈ ${fmt(cafe)} ₸ (по ${fmt(D.cafe || 2500)} ₸). За месяц ≈ ${fmt(save * 4.3)} ₸.</div></div>`;
-  h += `<p class="mut">Нажми на блюдо — рецепт и замена.</p>`;
-  h += `<div class="act"><div class="in"><button class="btn sec" data-act="quiz">Изменить ответы</button><button class="btn" data-act="rebuild">Новое меню</button></div></div>`;
+  if (save > 0) h += `<div class="save"><div><p style="margin:0 0 2px">Экономия в месяц по сравнению с кафе</p><div class="big">≈ ${fmt(Math.round(save * 4.3 / 1000) * 1000)} ₸</div><p>${meals} ${plural(meals, "приём", "приёма", "приёмов")} пищи в неделю по ${fmt(D.cafe || 2500)} ₸ — это ${fmt(cafe)} ₸, а продукты стоят ${fmt(T.receipt)} ₸.</p></div></div>`;
+  h += `<p class="hint">Нажми на блюдо — рецепт и замена</p>`;
+  h += `<div class="act"><div class="in"><button class="btn sec" data-act="quiz">Ответы</button><button class="btn" data-act="rebuild">${ICO.spark}Другое меню</button></div></div>`;
   el.innerHTML = h;
 }
+let listView = "buy";
 function vList(el) {
-  if (!PLAN) return noPlan(el, "Список покупок появится после подбора меню.");
-  const L = shopping(PLAN), T = L.totals, groups = {};
-  for (const it of L.items) (groups[P[it.pid].group] ||= []).push(it);
-  const left = L.items.filter(i => !DONE[i.pid]).length;
-  let h = `<h1>Покупки</h1><div class="mut">${left ? "Осталось купить: " + left + " из " + L.items.length : "Всё куплено"}</div><div class="card">`;
-  for (const [g, arr] of Object.entries(groups)) {
-    h += `<div class="grp">${g}</div>`;
-    for (const it of arr) h += `<div class="li ${DONE[it.pid] ? "done" : ""}" data-done="${it.pid}"><span><span class="box">${DONE[it.pid] ? "✓" : ""}</span>${P[it.pid].name} — <b>${amtStr(it.pid, it.amt)}</b>${it.pk ? `<br><span class="mut" style="margin-left:28px">купить: ${it.pk.label}</span>` : ""}</span><span>≈${fmt(it.buy)} ₸${hasLive() ? `<br>${it.mix.est ? `<span class="est">оценка</span>` : `<span class="mut">${SN[it.mix.s]}</span>`}` : ""}</span></div>`;
+  if (!PLAN && listView === "buy") return noPlan(el, "Список покупок появится, когда подберёшь меню. Что уже есть дома, можно отметить во вкладке «Дома» — после подбора меню.");
+  const L = PLAN ? shopping(PLAN) : {items: [], totals: {}}, T = L.totals, buyItems = L.items.filter(i => !i.home), homeItems = L.items.filter(i => i.home);
+  const stockN = Object.keys(STOCK).length;
+  let h = `<h1>Покупки</h1><div class="segc" role="tablist"><button class="${listView === "buy" ? "on" : ""}" data-lv="buy" role="tab">Купить${buyItems.length ? ` <span>${buyItems.filter(i => !DONE[i.pid]).length}</span>` : ""}</button><button class="${listView === "home" ? "on" : ""}" data-lv="home" role="tab">Есть дома${stockN ? ` <span>${stockN}</span>` : ""}</button></div>`;
+  if (listView === "home") {
+    h += `<p class="sub">То, что уже лежит дома, не попадёт в список покупок и не тратит бюджет. Остатки упаковок мы добавляем сюда сами, когда начинаешь новую неделю.</p>`;
+    if (stockN) {
+      const groups = {};
+      for (const pid of Object.keys(STOCK)) (groups[P[pid].group] ||= []).push(pid);
+      for (const [g, arr] of Object.entries(groups)) {
+        h += `<div class="grp">${g}</div><div class="card list">`;
+        for (const pid of arr) { const st = STOCK[pid], it = L.items.find(i => i.pid === pid); h += `<button class="set" data-stock="${pid}" data-need="${it ? it.need : 0}"><span class="si">${icon(st.always ? "box" : "bag")}</span><span class="t2"><b>${P[pid].name}</b><small>${st.always ? "всегда есть" : amtStr(pid, st.a)}${it ? (it.home ? " — на неделю хватает" : " — докупить " + amtStr(pid, it.amt)) : ""}</small></span>${ICO.chev}</button>`; }
+        h += `</div>`;
+      }
+    } else h += `<div class="card empty" style="padding:26px 16px"><div class="illo sm">${ILLO_BAG}</div>Пока пусто. Добавь то, что уже есть на кухне: крупы, масло, специи, яйца.</div>`;
+    h += `<div class="act"><div class="in"><button class="btn" data-act="stockadd">${icon("bag")}Добавить продукт</button></div></div>`;
+    el.innerHTML = h; return;
   }
-  h += `</div><div class="card"><h2>Сколько выйдет</h2><div class="tot"><span>Продукты на неделю (по весу)</span><span>${fmt(T.mix)} ₸</span><span><b>В чеке с учётом упаковок</b></span><span><b>≈ ${fmt(T.receipt)} ₸</b></span></div><p class="mut">Остатки упаковок (крупы, масло, специи) уйдут на следующую неделю. Соль и специи не входят.</p></div>`;
-  if (hasLive()) {
-    h += `<div class="card"><h2>Где купить всё сразу</h2><div class="tot">`;
-    STORES.map(s => [s, T[s]]).sort((a, b) => a[1].sum - b[1].sum).forEach(([s, v], i) =>
-      h += `<span class="${i ? "" : "best"}">${SN[s]}${v.miss ? ` <span class="est">${v.miss} поз. по оценке</span>` : ""}</span><span class="${i ? "" : "best"}">${fmt(v.sum)} ₸</span>`);
-    h += `<span><b>Каждый продукт там, где дешевле</b></span><span><b>${fmt(T.mix)} ₸</b></span></div></div>`;
-  } else h += `<p class="mut">Цены — ориентир по Алматы. Сравнение Magnum / Small / Arbuz появится после первого обновления цен.</p>`;
-  h += `<div class="act"><div class="in"><button class="btn sec" data-act="copy">Копировать</button><button class="btn" data-act="share">Отправить в чат</button></div></div>`;
+  const groups = {}; for (const it of buyItems) (groups[P[it.pid].group] ||= []).push(it);
+  const done = buyItems.filter(i => DONE[i.pid]).length;
+  if (buyItems.length) h += `<div class="prg"><div class="meter"><i style="width:${done / buyItems.length * 100}%"></i></div><span>${done === buyItems.length ? "Всё куплено" : done + " из " + buyItems.length}</span></div>`;
+  else h += `<div class="card"><b>Покупать ничего не нужно</b><div class="mut">Всё для меню уже есть дома.</div></div>`;
+  for (const [g, arr] of Object.entries(groups)) {
+    h += `<div class="grp">${g}</div><div class="card" style="padding:4px 16px;margin:0">`;
+    arr.sort((a, b) => !!DONE[a.pid] - !!DONE[b.pid]);
+    for (const it of arr) h += `<div class="chk ${DONE[it.pid] ? "done" : ""}"><button class="box" data-done="${it.pid}" aria-pressed="${!!DONE[it.pid]}" aria-label="Куплено: ${esc(P[it.pid].name)}">${ICO.check}</button><button class="t" data-stock="${it.pid}" data-need="${it.need}"><b>${P[it.pid].name}</b><small>${amtStr(it.pid, it.amt)}${it.have ? " (дома есть " + amtStr(it.pid, it.have) + ")" : ""}${it.pk ? " → " + it.pk.label : ""}</small></button><span class="p">${fmt(it.buy)} ₸${hasLive() ? `<small>${it.mix.est ? `<span class="est">оценка</span>` : SN[it.mix.s]}</small>` : ""}</span></div>`;
+    h += `</div>`;
+  }
+  if (homeItems.length) h += `<div class="grp">Уже есть дома — не покупаем</div><div class="card list">${homeItems.map(it => `<button class="set home" data-stock="${it.pid}" data-need="${it.need}"><span class="si">${icon("box")}</span><span class="t2"><b>${P[it.pid].name}</b><small>нужно ${amtStr(it.pid, it.need)} — хватает</small></span>${ICO.chev}</button>`).join("")}</div>`;
+  h += `<p class="hint">Нажми на продукт, чтобы указать, сколько его есть дома</p>`;
+  h += `<div class="card" style="margin-top:8px"><div class="li"><span class="mut">Продукты по весу</span><span>${fmt(T.mix)} ₸</span></div>${T.saved > 50 ? `<div class="li"><span class="mut">Не тратишь — уже есть дома</span><span style="color:var(--acc);font-weight:600">−${fmt(T.saved)} ₸</span></div>` : ""}<div class="total"><span><b>В чеке</b><br><span class="mut">с учётом упаковок</span></span><span class="disp">${fmt(T.receipt)} ₸</span></div><p class="mut" style="margin-bottom:0">Остатки упаковок попадут в «Есть дома», когда начнёшь новую неделю. Соль и специи не считаем.</p></div>`;
+  if (hasLive() && buyItems.length) {
+    const arr = STORES.map(s => [s, T[s]]).sort((a, b) => a[1].sum - b[1].sum), mx = arr[arr.length - 1][1].sum || 1;
+    h += `<div class="card"><h2>Где выгоднее купить всё</h2><div class="stores">${arr.map(([s, v], i) => `<div class="store ${i ? "" : "best"}"><b>${SN[s]}</b><div class="bar"><i style="width:${v.sum / mx * 100}%"></i></div><span>${fmt(v.sum)} ₸</span></div>${v.miss ? `<div class="est" style="margin:-8px 0 0 82px">${v.miss} поз. по оценке</div>` : ""}`).join("")}</div><div class="total"><span>Каждый продукт там, где дешевле</span><span class="disp" style="font-size:18px">${fmt(T.mix)} ₸</span></div></div>`;
+  }
+  h += `<div class="card nw"><div class="cardh"><span class="si">${icon("spark2")}</span><b>Неделя закончилась?</b></div><p class="mut">Начни новую: соберём новое меню, а остатки купленного останутся в «Есть дома» и не попадут в покупки.</p><button class="btn full ghost" data-act="newweek">Начать новую неделю</button></div>`;
+  if (buyItems.length) h += `<div class="act"><div class="in"><button class="btn sec" data-act="copy">${ICO.copy}Копировать</button><button class="btn" data-act="share">${ICO.send}Отправить</button></div></div>`;
   el.innerHTML = h;
 }
 function vPrices(el) {
   const q = priceQuery.toLowerCase().replace(/ё/g, "е");
   const list = D.products.filter(p => !q || p.name.toLowerCase().replace(/ё/g, "е").includes(q));
-  if (!hasLive()) {
-    let h = `<h1>Цены</h1><input class="search" id="pq" placeholder="Найти продукт: молоко, гречка…" value="${esc(priceQuery)}"><div class="card"><div class="li mut"><span>Продукт</span><span>≈ ₸ за кг / л / шт</span></div>`;
-    for (const p of list) h += `<div class="li"><span>${p.name}</span><span>${fmt(D.fallback[p.id])}</span></div>`;
-    if (!list.length) h += `<div class="empty">Ничего не найдено</div>`;
-    el.innerHTML = h + `</div><p class="mut">Пока это средние цены по Алматы. Живое сравнение Magnum, Small и Arbuz подключится после первого обновления цен.</p>`;
-    const inp = $("pq"); inp.oninput = () => { priceQuery = inp.value; const pos = inp.selectionStart; vPrices(el); const n = $("pq"); n.focus(); n.setSelectionRange(pos, pos); };
-    return;
+  const live = hasLive();
+  let h = `<h1>Цены</h1><p class="sub">${live ? "Сравнение по магазинам, ₸ за кг, литр или штуку" : "Средние цены по Алматы, ₸ за кг, литр или штуку"}</p><div class="search">${ICO.search}<input id="pq" placeholder="Молоко, гречка, курица…" value="${esc(priceQuery)}" autocomplete="off"></div><div class="card" style="padding:8px 16px">`;
+  if (!live) for (const p of list) h += `<div class="li"><span>${p.name}</span><span style="font-weight:600;font-variant-numeric:tabular-nums">${fmt(D.fallback[p.id])}</span></div>`;
+  else {
+    h += `<div class="prow h" style="grid-template-columns:minmax(0,1fr) repeat(${STORES.length},68px)"><span></span>${STORES.map(s => `<span>${SN[s]}</span>`).join("")}</div>`;
+    for (const p of list) { const i = priceInfo(p.id); h += `<div class="prow" style="grid-template-columns:minmax(0,1fr) repeat(${STORES.length},68px)"><span>${p.name}${i.best ? "" : ` <span class="est">≈${fmt(i.fallback)}</span>`}</span>${STORES.map(s => i.by[s] == null ? `<span class="mut">—</span>` : `<span class="${i.best.s === s ? "b" : ""}">${fmt(i.by[s])}</span>`).join("")}</div>`; }
   }
-  let h = `<h1>Цены</h1><input class="search" id="pq" placeholder="Найти продукт: молоко, гречка…" value="${esc(priceQuery)}"><div class="card"><div class="prow h"><span>₸ за кг / л / шт</span>${STORES.map(s => `<span>${SN[s]}</span>`).join("")}</div>`;
-  for (const p of list) {
-    const i = priceInfo(p.id);
-    h += `<div class="prow"><span>${p.name}${i.best ? "" : ` <span class="est">≈${fmt(i.fallback)}</span>`}</span>${STORES.map(s => i.by[s] == null ? `<span class="mut">—</span>` : `<span class="${i.best.s === s ? "b" : ""}">${fmt(i.by[s])}</span>`).join("")}</div>`;
-  }
-  if (!list.length) h += `<div class="empty">Ничего не найдено</div>`;
-  h += `</div><p class="mut">Обновлено: ${STORES.map(s => `${SN[s]} — ${esc(PRICES.stores?.[s]?.updated || "нет данных")}`).join(" · ")}. «≈» — ориентировочная цена, если магазин не отдал данные.</p>`;
+  if (!list.length) h += `<div class="empty">Такого продукта нет в базе</div>`;
+  h += `</div><p class="mut">${live ? "Обновлено: " + STORES.map(s => `${SN[s]} — ${esc(PRICES.stores?.[s]?.updated || "нет данных")}`).join(", ") + ". Зелёным — самая низкая цена, «≈» — оценка, если магазин не отдал данные." : "Живое сравнение Magnum, Small и Arbuz подключится после первого обновления цен."}</p>`;
   el.innerHTML = h;
   const inp = $("pq"); inp.oninput = () => { priceQuery = inp.value; const pos = inp.selectionStart; vPrices(el); const n = $("pq"); n.focus(); n.setSelectionRange(pos, pos); };
 }
 function vRecipes(el) {
   const q = recQuery.toLowerCase();
   const list = D.recipes.filter(r => (recFilter === "all" || r.cat === recFilter) && (!q || r.name.toLowerCase().includes(q)));
-  let h = `<h1>Рецепты</h1><input class="search" id="rq" placeholder="Поиск блюда" value="${esc(recQuery)}"><div class="chips">${[["all","Все"], ...Object.entries(CAT)].map(([k, l]) => `<button class="chip ${recFilter === k ? "on" : ""}" data-rf="${k}">${l}</button>`).join("")}</div><div class="card">`;
-  for (const r of list) h += `<div class="meal" data-open="${r.id}" data-m="1"><div><div class="tag">${CAT[r.cat]}${r.time ? " · " + r.time + " мин" : ""}${A.weight && !canCook(r) ? ` <span class="est">нет посуды</span>` : ""}${Object.keys(r.ing).some(pid => (A.ban || []).includes(pid)) ? ` <span class="est">есть убранный продукт</span>` : ""}${favN(r) ? " · ★" : ""}</div><b>${r.name}</b></div><div class="k">${fmt(RN[r.id][0])} ккал<br>≈${fmt(recipeCost(r, 1))} ₸</div></div>`;
-  if (!list.length) h += `<div class="empty">Ничего не найдено</div>`;
+  const DC = {breakfast: "var(--b)", soup: "var(--l)", main: "var(--d)", snack: "var(--s)"};
+  let h = `<h1>Рецепты</h1><p class="sub">${D.recipes.length} блюд из продуктов, которые есть в любом магазине</p><div class="search">${ICO.search}<input id="rq" placeholder="Найти блюдо" value="${esc(recQuery)}" autocomplete="off"></div><div class="chips scroll">${[["all","Все"], ...Object.entries(CAT)].map(([k, l]) => `<button class="chip ${recFilter === k ? "on" : ""}" data-rf="${k}">${k !== "all" ? `<span class="dot" style="background:${recFilter === k ? "currentColor" : DC[k]}"></span>` : ""}${l}</button>`).join("")}</div><div class="card" style="padding:4px 16px">`;
+  for (const r of list) {
+    const warn = A.weight && !canCook(r) ? "нет посуды" : Object.keys(r.ing).some(pid => (A.ban || []).includes(pid)) ? "есть убранный продукт" : "";
+    h += `<button class="rec ${CATC[r.cat]}" data-open="${r.id}" data-m="1"><span class="sq"><b>${r.time || "0"}</b><small>мин</small></span><span class="t"><b>${favN(r) ? icon("heart", "sm fav") : ""}${r.name}</b><small>${CAT[r.cat]} · ${fmt(RN[r.id][0])} ккал${warn ? ` · <span class="est">${warn}</span>` : ""}</small></span><span class="p">≈${fmt(recipeCost(r, 1))} ₸</span></button>`;
+  }
+  if (!list.length) h += `<div class="empty">Ничего не нашли — попробуй другое слово</div>`;
   el.innerHTML = h + `</div>`;
   const inp = $("rq"); inp.oninput = () => { recQuery = inp.value; const pos = inp.selectionStart; vRecipes(el); const n = $("rq"); n.focus(); n.setSelectionRange(pos, pos); };
 }
 function vMe(el) {
   const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  const G = {lose: "Похудеть", keep: "Держать вес", gain: "Набрать массу"}, EX = {beef: "говядина", chicken: "курица", fish: "рыба", dairy: "молочное", eggs: "яйца", gluten: "глютен"};
-  let h = `<h1>${user ? "Привет, " + esc(user.first_name) : "Профиль"}</h1>`;
-  if (A.weight) {
-    h += `<div class="card"><div class="li"><span>Цель</span><span>${G[A.goal] || "—"}</span></div><div class="li"><span>Возраст · рост · вес</span><span>${A.age} · ${A.height} см · ${A.weight} кг</span></div><div class="li"><span>Норма</span><span>${fmt(target())} ккал</span></div><div class="li"><span>Приёмы пищи</span><span>${slotsSel().map(x => SLOT[x].toLowerCase()).join(", ")}</span></div><div class="li"><span>Любимые продукты</span><span style="white-space:normal">${(A.fav || []).length ? A.fav.map(id => P[id].name.toLowerCase()).join(", ") : "—"}</span></div><div class="li"><span>Убранные продукты</span><span style="white-space:normal">${(A.ban || []).length ? A.ban.map(id => P[id].name.toLowerCase()).join(", ") : "—"}</span></div><div class="li"><span>Посуда</span><span style="white-space:normal">${(A.tools || []).map(t => TOOL_NAME[t].replace(/ \(.*\)/, "").toLowerCase()).join(", ")}</span></div><div class="li"><span>Не ем</span><span>${A.excl.length ? A.excl.map(x => EX[x]).join(", ") : "—"}</span></div>${A.slots.includes("l") && A.slots.includes("d") ? `<div class="li"><span>Обед = вчерашний ужин</span><span>${isBatch() ? "да" : "нет"}</span></div>` : ""}<div class="li"><span>Человек</span><span>${A.people}</span></div><div class="li"><span>Бюджет</span><span>${fmt(A.budget)} ₸ / нед</span></div></div>`;
-    h += `<button class="btn full" data-act="fav" style="margin-bottom:8px">Любимые продукты${(A.fav || []).length ? " (" + A.fav.length + ")" : ""}</button><button class="btn full" data-act="ban" style="margin-bottom:8px">Нежелательные продукты${(A.ban || []).length ? " (" + A.ban.length + ")" : ""}</button><button class="btn full sec" data-act="quiz">Пройти опрос заново</button>`;
-  } else h += `<button class="btn full" data-act="quiz">Пройти опрос</button>`;
-  h += `<div class="card"><h2>О сервисе</h2><p class="mut">Бесплатный помощник: меню на неделю, КБЖУ, список покупок и сравнение цен в Алматы. Калории — по формуле Миффлина — Сан-Жеора. Цены обновляются раз в день; это ориентир, на полке может отличаться. Не является медицинской рекомендацией.</p></div>`;
-  el.innerHTML = h;
+  const name = user ? user.first_name : "Профиль";
+  const qv = k => { const q = Q.find(x => x.k === k), o = (q.o || []).find(x => x[0] === A[k]); return o ? o[1] : "—"; };
+  const ml = (k, f) => { const arr = A[k] || []; return arr.length ? arr.map(f).join(", ") : "нет"; };
+  const qm = k => v => (Q.find(x => x.k === k).multi.find(x => x[0] === v) || [, v])[1].replace(/ \(.*\)/, "").toLowerCase();
+  const row = (ic, label, val, attrs) => `<button class="set" ${attrs}><span class="si">${icFor(ic)}</span><span class="k">${label}</span><span class="v">${val}</span>${ICO.chev}</button>`;
+  let h = `<div class="me"><div class="ava">${esc((user ? user.first_name : "Я").slice(0, 1).toUpperCase())}</div><div><h1>${esc(name)}</h1><div class="mut">${A.weight ? "Нажми на пункт, чтобы изменить" : "Пройди опрос — подберём меню"}</div></div></div>`;
+  if (!A.weight) {
+    el.innerHTML = h + `<button class="btn full" data-act="quiz">Пройти опрос</button>` + about();
+    return;
+  }
+  h += `<div class="stats"><div><b>${fmt(target())}</b><span>норма, ккал</span></div><div><b>${PLAN ? fmt(avgKc(PLAN)) : "—"}</b><span>в меню, ккал</span></div><div><b>${PLAN ? fmt(shopping(PLAN).totals.mix) + " ₸" : "—"}</b><span>из ${fmt(A.budget)} ₸</span></div></div>`;
+  h += `<div class="grp">Мои данные</div><div class="card list">
+    ${row(A.goal === "lose" ? "down" : A.goal === "gain" ? "up" : "keep", "Цель", qv("goal"), 'data-edit="goal"')}
+    ${row(A.sex === "f" ? "female" : "male", "Пол", qv("sex"), 'data-edit="sex"')}
+    ${row("cake", "Возраст", A.age + " " + plural(A.age, "год", "года", "лет"), 'data-edit="body" data-only="age"')}
+    ${row("ruler", "Рост", A.height + " см", 'data-edit="body" data-only="height"')}
+    ${row("scales", "Вес", A.weight + " кг", 'data-edit="body" data-only="weight"')}
+    ${row("b" + (["1.2","1.375","1.55","1.725"].indexOf(A.act) + 1), "Активность", qv("act"), 'data-edit="act"')}</div>`;
+  h += `<div class="grp">Продукты</div><div class="card list">
+    ${row("heart", "Любимые", (A.fav || []).length ? (A.fav || []).length + " " + plural(A.fav.length, "продукт", "продукта", "продуктов") : "не выбраны", 'data-act="fav"')}
+    ${row("ban", "Нежелательные", (A.ban || []).length ? A.ban.length + " " + plural(A.ban.length, "продукт", "продукта", "продуктов") : "нет", 'data-act="ban"')}
+    ${row("wheat", "Не ем", ml("excl", qm("excl")), 'data-edit="excl"')}
+    ${row("box", "Есть дома", Object.keys(STOCK).length ? Object.keys(STOCK).length + " " + plural(Object.keys(STOCK).length, "продукт", "продукта", "продуктов") : "пусто", 'data-act="home"')}</div>`;
+  const qs = k => Q.find(x => x.k === k);
+  h += `<div class="grp">Меню</div><div class="card list">
+    ${row("sun", "Приёмы пищи", ml("slots", qm("slots")), 'data-edit="slots"')}
+    ${qs("full").skip(A) ? "" : row("target", "Вся еда за день", A.full === "1" ? "да" : "нет", 'data-edit="full"')}
+    ${qs("batch").skip(A) ? "" : row("box", "Обед с ужина", isBatch() ? "да" : "нет", 'data-edit="batch"')}
+    ${row("clock", "Время на готовку", +A.time > 100 ? "не важно" : "до " + A.time + " мин", 'data-edit="time"')}
+    ${row("pot_small", "Посуда", ml("tools", qm("tools")), 'data-edit="tools"')}
+    ${row("people", "Готовлю на", A.people + " " + plural(+A.people, "человека", "человек", "человек"), 'data-edit="people"')}
+    ${row("wallet", "Бюджет", fmt(A.budget) + " ₸ в неделю", 'data-edit="budget"')}</div>`;
+  h += `<button class="btn full ghost" data-act="quiz" style="margin-top:18px">Пройти опрос заново</button>`;
+  el.innerHTML = h + about();
 }
+const about = () => `<div class="grp">О приложении</div><div class="card"><p class="mut" style="margin:0">Бесплатный помощник: меню на неделю, КБЖУ, список покупок и сравнение цен в Алматы. Калории считаем по формуле Миффлина — Сан-Жеора. Цены обновляются раз в день и могут отличаться от цены на полке. Это не медицинская рекомендация.</p></div>`;
 
 // ---------- рецепт ----------
 function openRecipe(id, m, slot) {
   const r = R[id], ppl = PLAN && slot ? PLAN.ppl : 1, k = RN[id].map(v => v * m);
-  const ing = Object.entries(r.ing).map(([pid, a]) => `<div class="li"><span>${P[pid].name}</span><span>${amtStr(pid, a * m * ppl)}</span></div>`).join("");
+  const ing = Object.entries(r.ing).map(([pid, a]) => `<div class="li"><span>${P[pid].name}</span><span class="mut">${amtStr(pid, a * m * ppl)}</span></div>`).join("");
+  const sc = slot ? SC[slot] : CATC[r.cat], noTool = A.weight && !canCook(r);
   const md = document.createElement("div"); md.className = "modal";
-  md.innerHTML = `<div class="sheet"><div class="tag">${r.time ? r.time + " мин" : "без готовки"} · ${ppl > 1 ? ppl + " порц." : "1 порция"}</div><h2 style="margin-top:4px">${r.name}</h2><div class="mut">${fmt(k[0])} ккал · Б ${fmt(k[1])} · Ж ${fmt(k[2])} · У ${fmt(k[3])} на порцию</div>${r.need && r.need.length ? `<div class="mut" style="margin-top:6px">Посуда: ${needStr(r)}${A.weight && !canCook(r) ? ` <span class="est">— у тебя нет</span>` : ""}</div>` : ""}<div style="margin-top:8px">${ing}</div><p>${r.how}</p><p class="mut">≈ ${fmt(recipeCost(r, m * ppl))} ₸</p><button class="btn full" style="margin-top:12px" data-act="cook" data-id="${id}" data-m="${m}" data-ppl="${ppl}">Рецепт готовки — пошагово</button><div class="row">${slot ? `<button class="btn sec" data-swap="${slot}">Заменить блюдо</button>` : ""}<button class="btn sec" data-act="close">Закрыть</button></div></div>`;
+  md.innerHTML = `<div class="sheet ${sc}" role="dialog" aria-label="${esc(r.name)}"><div class="grab"></div><span class="slot">${slot ? SLOT[slot] : CAT[r.cat]}</span><h2>${r.name}</h2><div class="badges"><span class="badge">${icon("clock", "sm")}${r.time ? r.time + " мин" : "без готовки"}</span><span class="badge">${ppl > 1 ? ppl + " порции" : "1 порция"}</span><span class="badge">≈ ${fmt(recipeCost(r, m * ppl))} ₸</span>${r.need && r.need.length ? `<span class="badge ${noTool ? "w" : ""}">${needStr(r)}${noTool ? " — нет" : ""}</span>` : ""}</div>
+  <div class="nutri"><div><b>${fmt(k[0])}</b><span>ккал</span></div><div><b>${fmt(k[1])}</b><span>белки</span></div><div><b>${fmt(k[2])}</b><span>жиры</span></div><div><b>${fmt(k[3])}</b><span>углев.</span></div></div>
+  <div class="card" style="padding:6px 16px"><div class="grp" style="margin:10px 0 2px">Продукты</div>${ing}</div><p class="mut" style="font-size:15px">${r.how}</p>
+  <div class="foot"><button class="btn full" data-act="cook" data-id="${id}" data-m="${m}" data-ppl="${ppl}">${icon("steps")}Готовить по шагам</button><div class="row">${slot ? `<button class="btn sec" data-swap="${slot}">Заменить блюдо</button>` : ""}<button class="btn sec" data-act="close">Закрыть</button></div></div></div>`;
   md.onclick = e => { if (e.target === md) closeModal(); };
   document.body.appendChild(md);
   try { tg && tg.BackButton.show(); } catch (e) {}
@@ -464,24 +932,26 @@ function openRecipe(id, m, slot) {
 function openCook(id, m, ppl) {
   closeModal();
   const r = R[id], tot = (r.steps || []).reduce((t, s) => t + (s.t || 0), 0);
-  const ing = Object.entries(r.ing).map(([pid, a]) => `<div class="li"><span>${P[pid].name}</span><span>${amtStr(pid, a * m * ppl)}</span></div>`).join("");
-  const steps = (r.steps || []).map((s, i) => `<div class="step"><div class="n" data-n="${i + 1}">${i + 1}</div><div class="tx">${esc(s.s)}${s.t ? `<br><button class="timer" data-timer="${s.t * 60}">⏱ Таймер ${s.t} мин</button>` : ""}</div></div>`).join("");
+  const ing = Object.entries(r.ing).map(([pid, a]) => `<div class="li"><span>${P[pid].name}</span><span class="mut">${amtStr(pid, a * m * ppl)}</span></div>`).join("");
+  const steps = (r.steps || []).map((s, i) => `<div class="step"><button class="n" data-n="${i + 1}" aria-label="Шаг ${i + 1} выполнен">${i + 1}</button><div class="tx">${esc(s.s)}${s.t ? `<br><button class="timer" data-timer="${s.t * 60}">${icon("clock", "sm")}Таймер ${s.t} мин</button>` : ""}</div></div>`).join("");
   const md = document.createElement("div"); md.className = "modal";
-  md.innerHTML = `<div class="sheet" style="max-height:94vh"><div class="tag">${ppl > 1 ? ppl + " порц." : "1 порция"}${tot ? " · время по шагам ≈ " + tot + " мин" : ""}</div><h2 style="margin-top:4px">${r.name}</h2>${r.need && r.need.length ? `<div class="mut">Посуда: ${needStr(r)}</div>` : ""}<div class="grp">Понадобится</div>${ing}<div class="mut" style="margin-top:6px">+ соль, перец и специи по вкусу</div><div class="grp">Как готовить</div>${steps}<p class="mut">Нажми на номер шага, чтобы отметить его выполненным.</p><div class="row"><button class="btn sec" data-act="close">Закрыть</button></div></div>`;
+  md.innerHTML = `<div class="sheet ${CATC[r.cat]}" style="max-height:95vh" role="dialog" aria-label="${esc(r.name)}"><div class="grab"></div><span class="slot">По шагам</span><h2>${r.name}</h2><div class="badges"><span class="badge">${ppl > 1 ? ppl + " порции" : "1 порция"}</span>${tot ? `<span class="badge">${icon("clock", "sm")}≈ ${tot} мин</span>` : ""}${r.need && r.need.length ? `<span class="badge">${needStr(r)}</span>` : ""}</div>
+  <div class="card" style="padding:6px 16px;margin-top:16px"><div class="grp" style="margin:10px 0 2px">Понадобится</div>${ing}<div class="li mut"><span>Соль, перец, специи</span><span>по вкусу</span></div></div>
+  <div class="card" style="padding:4px 16px">${steps}</div><p class="mut" style="text-align:center">Нажми на номер шага, чтобы отметить его</p><div class="foot"><button class="btn full sec" data-act="close">Закрыть</button></div></div>`;
   md.onclick = e => { if (e.target === md) closeModal(); };
   document.body.appendChild(md);
   try { tg && tg.BackButton.show(); } catch (e) {}
 }
 const TIMERS = new Map();
 function startTimer(btn, sec) {
-  if (TIMERS.has(btn)) { clearInterval(TIMERS.get(btn)); TIMERS.delete(btn); btn.className = "timer"; btn.textContent = "⏱ Таймер " + Math.round(sec / 60) + " мин"; return; }
+  if (TIMERS.has(btn)) { clearInterval(TIMERS.get(btn)); TIMERS.delete(btn); btn.className = "timer"; btn.innerHTML = icon("clock", "sm") + "Таймер " + Math.round(sec / 60) + " мин"; return; }
   const end = Date.now() + sec * 1000; btn.className = "timer run";
   const tick = () => {
     const left = Math.max(0, Math.round((end - Date.now()) / 1000));
-    btn.textContent = "⏸ " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+    btn.textContent = "Пауза · " + Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
     if (!left) {
-      clearInterval(TIMERS.get(btn)); TIMERS.delete(btn); btn.className = "timer end"; btn.textContent = "✓ Время вышло";
-      toast("⏱ Время вышло — переходи к следующему шагу");
+      clearInterval(TIMERS.get(btn)); TIMERS.delete(btn); btn.className = "timer end"; btn.textContent = "Время вышло";
+      toast("Время вышло — переходи к следующему шагу");
       try { tg && tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
       try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) {}
     }
@@ -493,7 +963,7 @@ function closeModal() { TIMERS.forEach(t => clearInterval(t)); TIMERS.clear(); d
 // ---------- действия ----------
 function listText() {
   const L = shopping(PLAN);
-  return "🛒 Список покупок на неделю\n" + L.items.map(it => `• ${P[it.pid].name} — ${it.pk ? it.pk.label : amtStr(it.pid, it.amt)}`).join("\n") + `\n\n≈ ${fmt(L.totals.receipt)} ₸`;
+  return "Список покупок на неделю\n" + L.items.filter(it => !it.home).map(it => `• ${P[it.pid].name} — ${it.pk ? it.pk.label : amtStr(it.pid, it.amt)}`).join("\n") + `\n\n≈ ${fmt(L.totals.receipt)} ₸`;
 }
 function copyText(t) {
   const ok = () => toast("Список скопирован");
@@ -506,22 +976,28 @@ function share() {
   copyText(t);
 }
 document.addEventListener("click", e => {
-  const a = e.target.closest("[data-act],[data-day],[data-open],[data-done],[data-rf],[data-swap],[data-n],[data-timer]");
+  const a = e.target.closest("[data-lv],[data-stock],[data-edit],[data-act],[data-day],[data-open],[data-done],[data-rf],[data-swap],[data-n],[data-timer]");
   if (!a) return;
   const d = a.dataset;
   if (d.act === "quiz") startQuiz();
   else if (d.act === "qnext") qNext();
   else if (d.act === "qback") { quizStep = Math.max(0, stepFrom(quizStep, -1)); render(); }
   else if (d.act === "qcancel") { quizStep = -1; render(); }
-  else if (d.act === "rebuild") { build((PLAN ? PLAN.seed : 0) + 1); toast("Собрано новое меню"); }
-  else if (d.act === "budget") { A.budget = +d.v; ST.set("answers", A); build((PLAN ? PLAN.seed : 0) + 1); }
+  else if (d.act === "rebuild") build((PLAN ? PLAN.seed : 0) + 1, {msg: "Готово — новое меню"});
+  else if (d.act === "budget") { A.budget = +d.v; A.budgetPpl = +A.people; ST.set("answers", A); build((PLAN ? PLAN.seed : 0) + 1, {msg: "Бюджет — " + fmt(+d.v) + " ₸, меню собрано"}); }
+  else if (d.edit) openEdit(d.edit, d.only);
+  else if (d.lv) { listView = d.lv; haptic(); render(); }
+  else if (d.stock) openStock(d.stock, +d.need || 0);
+  else if (d.act === "stockadd") openStockAdd();
+  else if (d.act === "newweek") askNewWeek();
+  else if (d.act === "home") { listView = "home"; go("list"); }
   else if (d.act === "copy") copyText(listText());
   else if (d.act === "share") share();
   else if (d.act === "close") closeModal();
   else if (d.act === "ban") openBanEditor("ban");
   else if (d.act === "fav") openBanEditor("fav");
   else if (d.act === "cook") openCook(d.id, +d.m, +d.ppl);
-  else if (d.n) { a.closest(".step").classList.toggle("ok"); haptic(); }
+  else if (d.n) { const st = a.closest(".step"); st.classList.toggle("ok"); a.innerHTML = st.classList.contains("ok") ? ICO.check : d.n; haptic(); }
   else if (d.timer) startTimer(a, +d.timer);
   else if (d.act === "bansave") saveBan();
   else if (d.day) { curDay = +d.day; haptic(); render(); }
@@ -531,9 +1007,11 @@ document.addEventListener("click", e => {
   else if (d.swap) { const s = d.swap; closeModal(); swapMeal(curDay, s); }
 });
 
-fetch("prices.json", {cache: "no-store"}).then(r => r.ok ? r.json() : null).then(j => { if (j && j.stores) { PRICES = j; render(); } }).catch(() => {});
-ST.pull(["answers", "plan", "done"], () => {
-  A = ST.get("answers") || A; PLAN = ST.get("plan") || PLAN; DONE = ST.get("done") || DONE;
+setStores();
+const loadPrices = u => fetch(u, {cache: "no-store"}).then(r => r.ok ? r.json() : null).then(j => j && j.stores && Object.values(j.stores).some(x => Object.keys(x.items || {}).length) ? j : null);
+(D.pricesUrl ? loadPrices(D.pricesUrl).catch(() => null) : Promise.resolve(null)).then(j => j || loadPrices("prices.json").catch(() => null)).then(j => { if (j) { PRICES = j; setStores(); if (quizStep < 0 && !document.querySelector(".modal")) render(); } });
+ST.pull(["answers", "plan", "done", "stock"], () => {
+  A = ST.get("answers") || A; PLAN = ST.get("plan") || PLAN; DONE = ST.get("done") || DONE; STOCK = ST.get("stock") || STOCK;
   if (!A.excl) A.excl = [];
   if (!A.slots) A.slots = A.meals === "4" ? ["b","l","d","s"] : ["b","l","d"];
   if (!A.tools) A.tools = ["pan","pot_small","pot_big","oven"];
