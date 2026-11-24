@@ -1,8 +1,10 @@
 {
- "arbuz_city": "almaty",
- "kaspi_city": "750000000",
- "kaspi_filter": ":availableInZones:Magnum_ZONE1",
- "wolt_small_slug": "smallala50",
- "bot_link": "https://t.me/racion_food_kz_bot",
- "app_name": "Еда на неделю"
+  "arbuz_city": "almaty",
+  "kaspi_city": "750000000",
+  "kaspi_filter": ":availableInZones:Magnum_ZONE1",
+  "wolt_small_slug": "smallala50",
+  "bot_link": "https://t.me/racion_food_kz_bot",
+  "app_name": "Еда на неделю",
+  "cafe_meal_price": 2500,
+  "prices_url": "https://racion-bot.racion-food.workers.dev/prices"
 }
