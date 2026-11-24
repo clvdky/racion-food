@@ -646,10 +646,14 @@ function askBudget(seed, o, need, fit, cheap) {
   });
   try { tg && tg.BackButton.show(); } catch (e) {}
 }
+const SEEN = {};   // что уже предлагали при замене: перебираем все блюда, прежде чем повторить
 function swapMeal(d, s) {
-  const day = PLAN.days[d], cur = day[s], pool = pools()[s === "l" ? "l" : s];
+  const day = PLAN.days[d], cur = day[s], pool = pools()[s === "l" ? "l" : s], key = d + s;
+  const seen = (SEEN[key] ||= new Set()); seen.add(cur.id);
+  if (pool.every(r => seen.has(r.id))) { seen.clear(); seen.add(cur.id); }
   const inWeek = new Set(PLAN.days.flatMap(x => PLAN.slots.map(k => x[k].id)));
-  const opts = pool.filter(r => r.id !== cur.id).sort((a, b) => (inWeek.has(a.id) - inWeek.has(b.id)) || (favN(b) - favN(a)) || (Math.random() - .5));
+  const sameDay = new Set(PLAN.slots.filter(k => k !== s).map(k => day[k].id));
+  const opts = pool.filter(r => r.id !== cur.id && !sameDay.has(r.id)).sort((a, b) => (seen.has(a.id) - seen.has(b.id)) || (inWeek.has(a.id) - inWeek.has(b.id)) || (favN(b) - favN(a)) || (Math.random() - .5));
   if (!opts.length) return toast("Нет других подходящих блюд");
   const tk = PLAN.kc * shares()[s], f = PLAN.cut ? PLAN.cut.f : 1, next = PLAN.days[d + 1];
   for (const r of opts) {
@@ -791,6 +795,16 @@ function vPlan(el) {
   <div class="meta"><span>бюджет ${fmt(A.budget)} ₸</span>${over ? `<b class="o">+${fmt(T.mix - A.budget)} ₸ сверх</b>` : `<b>запас ${fmt(A.budget - T.mix)} ₸</b>`}</div>
   <div class="week" role="tablist">${DAYS.map((d, i) => `<button class="${i === curDay ? "on" : ""} ${i === td ? "today" : ""}" data-day="${i}" role="tab" aria-selected="${i === curDay}" aria-label="${DAYS_FULL[i]}"><b>${d}</b>${PLAN.slots.map(s => `<i class="${MI[s]}"></i>`).join("")}<small>${fmt(dayNutr(PLAN.days[i])[0])}</small></button>`).join("")}</div></div>`;
   if (PLAN.at && Date.now() - PLAN.at > 6.5 * 864e5) h += `<div class="alert info" style="background:var(--acc2)"><h3 style="color:var(--acc)">Прошла неделя</h3><div class="mut">Начни новую — соберём свежее меню, а остатки продуктов учтём в «Есть дома».</div><div class="btns"><button class="btn sm" data-act="newweek">Начать новую неделю</button></div></div>`;
+  const pl = pools(), shared = PLAN.slots.includes("l") && PLAN.slots.includes("d") && !isBatch();
+  const need = x => (x === "l" || x === "d") && shared ? 14 : 7, few = PLAN.slots.filter(x => (shared && x === "d" ? pl.l.length : pl[x].length) < need(x));
+  if (few.length) {
+    const s0 = few[0], cnt = P0 => shared && (s0 === "l" || s0 === "d") ? P0.l.length : P0[s0].length, n = cnt(pl), tips = [];
+    const tryA = patch => { const keep = A; A = {...A, ...patch}; const c = cnt(pools()); A = keep; return c; };
+    if (+A.time < 999) { const t2 = +A.time < 50 ? "50" : "999", c = tryA({time: t2}); if (c > n) tips.push(`<button class="btn sm" data-tip="time" data-v="${t2}">${t2 === "50" ? "До 50 минут" : "Любое время"} — ${c} ${plural(c, "блюдо", "блюда", "блюд")}</button>`); }
+    if ((A.ban || []).length && tryA({ban: []}) > n) tips.push(`<button class="btn sm sec" data-act="ban">Убранные продукты</button>`);
+    tips.push(`<button class="btn sm sec" data-edit="tools">Посуда</button>`);
+    h += `<div class="alert info"><h3>Мало блюд под твои ответы</h3><div class="mut">${shared && (s0 === "l" || s0 === "d") ? "Для обеда и ужина" : "Для приёма «" + SLOT[s0].toLowerCase() + "»"} подходит ${n} ${plural(n, "блюдо", "блюда", "блюд")}, поэтому они повторяются. Расширь условия — выбор станет больше.</div><div class="btns" style="flex-wrap:wrap">${tips.join("")}</div></div>`;
+  }
   if (PLAN.cut) h += `<div class="alert info"><h3>${A.goal === "gain" ? "Меню на минимальную сумму" : "Порции уменьшены под бюджет"}</h3><div class="mut">Около ${fmt(PLAN.cut.now)} ккал в день вместо ${fmt(PLAN.cut.was)}.${A.goal === "gain" ? " Для набора массы этого мало." : ""} Полное меню — от ${fmt(PLAN.cut.need)} ₸.</div><div class="btns"><button class="btn sm" data-act="budget" data-v="${PLAN.cut.need}">Бюджет ${fmt(PLAN.cut.need)} ₸</button></div></div>`;
   else if (over) h += `<div class="alert"><h3>Цены выросли — меню дороже бюджета</h3><div class="mut">На ${fmt(T.mix - A.budget)} ₸. Пересобери меню, чтобы уложиться.</div><div class="btns"><button class="btn sm" data-act="rebuild">Пересобрать</button></div></div>`;
   const kP = n[1] * 4, kF = n[2] * 9, kC = n[3] * 4, kT = kP + kF + kC || 1;
@@ -977,7 +991,7 @@ function share() {
   copyText(t);
 }
 document.addEventListener("click", e => {
-  const a = e.target.closest("[data-lv],[data-stock],[data-edit],[data-act],[data-day],[data-open],[data-done],[data-rf],[data-swap],[data-n],[data-timer]");
+  const a = e.target.closest("[data-tip],[data-lv],[data-stock],[data-edit],[data-act],[data-day],[data-open],[data-done],[data-rf],[data-swap],[data-n],[data-timer]");
   if (!a) return;
   const d = a.dataset;
   if (d.act === "quiz") startQuiz();
@@ -988,6 +1002,7 @@ document.addEventListener("click", e => {
   else if (d.act === "budget") { A.budget = +d.v; A.budgetPpl = +A.people; ST.set("answers", A); build((PLAN ? PLAN.seed : 0) + 1, {msg: "Бюджет — " + fmt(+d.v) + " ₸, меню собрано"}); }
   else if (d.edit) openEdit(d.edit, d.only);
   else if (d.lv) { listView = d.lv; haptic(); render(); }
+  else if (d.tip === "time") { A.time = d.v; ST.set("answers", A); build(PLAN.seed + 1, {msg: "Время на готовку изменено, меню обновлено"}); }
   else if (d.stock) openStock(d.stock, +d.need || 0);
   else if (d.act === "stockadd") openStockAdd();
   else if (d.act === "newweek") askNewWeek();
