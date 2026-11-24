@@ -1,0 +1,10 @@
+{
+ "_note": "Ориентировочные цены по Алматы, ₸ за кг / л / шт. Используются, только если парсер не нашёл товар.",
+ "chicken_breast": 2300, "chicken_thigh": 1700, "chicken_mince": 1900, "beef": 4300, "beef_mince": 3600,
+ "fish_pollock": 2200, "eggs": 70, "milk": 650, "kefir": 650, "tvorog": 3000, "sour_cream": 2300,
+ "yogurt": 2200, "cheese": 5500, "butter": 6500, "oil": 1100, "oats": 900, "buckwheat": 700, "rice": 900,
+ "pasta": 1000, "lentils": 1100, "flour": 350, "tomato_paste": 1800, "honey": 3500, "bread": 700,
+ "lavash": 1300, "potato": 185, "carrot": 206, "onion": 190, "garlic": 1595, "cabbage": 180, "tomato": 700,
+ "cucumber": 919, "bell_pepper": 1395, "zucchini": 900, "beet": 220, "mushrooms": 1800, "greens": 2500,
+ "apple": 600, "banana": 800
+}
