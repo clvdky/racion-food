@@ -578,7 +578,8 @@ function build(seed, o = {}) {
   const kc = target(), sh = shares(), batch = isBatch(), pool = pools();
   const slots = slotsSel();
   for (const s of slots) if (!pool[s].length) { toast("Нет подходящих блюд для «" + SLOT[s] + "» — верни часть продуктов, добавь посуду или время"); return; }
-  const limit = {b: 2, l: 2, d: 2, s: 3};
+  // каждое блюдо — не больше раза в неделю, если подходящих блюд хватает; повторы только при маленьком выборе
+  const lim = n => n >= 10 ? 1 : n >= 4 ? 2 : 3, limit = {b: lim(pool.b.length), l: lim(pool.l.length), d: lim(pool.d.length), s: lim(pool.s.length)};
   const gen = (w, sd) => {
     const rnd = rng(sd), used = {}, days = [];
     for (let d = 0; d < 7; d++) {
@@ -589,7 +590,7 @@ function build(seed, o = {}) {
         const c = pool[s].map(r => {
           const m = multFor(r, tk), u = used[r.id] || 0, raw = tk / RN[r.id][0];
           const big = raw > 1.6 ? (raw - 1.6) * 4 : 0;
-          return {r, m, sc: (u >= limit[s] ? 1e6 : u * 3) + big + rnd() * 4 - favN(r) * 1.2 + w * recipeCost(r, m) / (RN[r.id][0] * m) * 1.6};
+          return {r, m, sc: (u >= limit[s] ? 1e6 : u * 6) + big + rnd() * 4 - favN(r) * 1.2 + w * recipeCost(r, m) / (RN[r.id][0] * m) * 1.6};
         }).sort((a, b) => a.sc - b.sc)[0];
         used[c.r.id] = (used[c.r.id] || 0) + (s === "d" && batch ? 2 : 1);
         day[s] = {id: c.r.id, m: c.m};
