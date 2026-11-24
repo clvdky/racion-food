@@ -2,12 +2,30 @@
 
 Бот: https://t.me/racion_food_kz_bot · Приложение: https://clvdky.github.io/racion-food/
 
-Квиз → меню на 7 дней с КБЖУ → список покупок с ценами Magnum / Small / Arbuz.
+Квиз → меню на 7 дней с КБЖУ в рамках бюджета → список покупок с ценами Magnum и Small, учётом того, что уже есть дома.
 Работает внутри Telegram как мини-приложение. Вкладки: Рацион, Покупки, Цены, Рецепты, Профиль.
-Цены парсятся раз в день на твоём компьютере (Mac или Windows) и публикуются на GitHub Pages. Сервер не нужен.
+
+## Как всё связано
+- **GitHub Pages** (`docs/`) — само приложение (`index.html`) и правила сопоставления товаров (`match.json`).
+- **Cloudflare Worker** `racion-bot` (`server/worker.js`) — сервер бота и цен:
+  - отвечает на `/start`, `/menu`, `/remind`, `/help`, по воскресеньям в 11:00 шлёт напоминание подписчикам;
+  - каждые 20 минут обновляет часть цен: Magnum — через поиск Магазина на Kaspi, Small — через каталог Wolt. Полный круг ≈ 2 часа;
+  - отдаёт цены приложению: `https://racion-bot.racion-food.workers.dev/prices`; состояние — `/prices/status`, ручной шаг — `/prices/run`.
+- **Arbuz** закрыт защитой Cloudflare от запросов с серверов, поэтому с сервера не парсится. Скрипты в `scrapers/` можно запускать с компьютера (см. ниже), но в приложение они попадают только через `docs/prices.json`.
+- Приложение берёт цены с сервера, а если он недоступен — из `docs/prices.json`, а если нет и его — средние цены из `data/fallback_prices.json`.
+
+## Как обновить приложение
+1. Правишь `app/template.html`, `data/*.json` или `config.json`.
+2. `python3 build_app.py` — собирает `docs/index.html` и `docs/match.json`.
+3. Загружаешь изменённые файлы на GitHub — Pages обновится за 1–2 минуты.
+
+## Как обновить сервер
+Cloudflare → Workers & Pages → `racion-bot` → Edit code → вставить `server/worker.js` → Deploy.
+Секрет `BOT_TOKEN` и привязка KV `USERS` сохраняются. Триггеры Cron: `0 6 * * SUN` и `*/20 * * * *`.
 
 ## Как поменять название и бота
-- **Название в приложении**: `config.json → app_name`, затем `python build_app.py` и push.
+- **Название в приложении**: `config.json → app_name` (можно прямо на GitHub через карандаш — приложение пересоберётся само).
+- **Цена обеда в кафе для блока «Экономия»**: `config.json → cafe_meal_price`.
 - **Имя бота в Telegram**: @BotFather → `/setname` → выбрать бота → новое имя. Меняется сразу, без кода.
 - **Описание / «о боте» / аватар**: @BotFather → `/setdescription`, `/setabouttext`, `/setuserpic`.
 - **Username (@racion_food_kz_bot)**: в BotFather его сменить нельзя. Варианты: создать нового бота (`/newbot`), настроить ему Mini App на ту же ссылку и вписать новую ссылку в `config.json → bot_link`; либо купить коллекционный username на Fragment.
@@ -22,7 +40,7 @@
 5. Описание бота: Bot Settings → Edit Description — «Бесплатный рацион на неделю с ценами Magnum, Small и Arbuz».
 
 Что даёт Telegram:
-- тема (светлая/тёмная) и цвета берутся из Telegram;
+- шапка Telegram перекрашивается под приложение;
 - ответы, меню и отметки покупок хранятся в Telegram CloudStorage — видны на телефоне и компьютере;
 - «Отправить в чат» — список покупок уходит в любой чат (например, жене или в семейный);
 - кнопка «Назад» Telegram работает в опросе и в карточке рецепта.
