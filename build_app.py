@@ -16,10 +16,19 @@ for r in data["recipes"]:
 cfg = load("config.json")
 data["botLink"] = cfg.get("bot_link", "")
 data["appName"] = cfg.get("app_name", "Еда на неделю")
+data["cafe"] = cfg.get("cafe_meal_price", 2500)
 prices = ROOT / "docs/prices.json"
 data["prices"] = load("docs/prices.json") if prices.exists() else {"stores": {}}
+# правила сопоставления товаров для сервера цен (Cloudflare Worker читает docs/match.json)
+import re
+def js_re(r):  # \b в JS не работает с кириллицей — заменяем на явные границы слова
+    r = re.sub(r"\\b(?=[а-яё])", "(?<![а-яё])", r)
+    return re.sub(r"(?<=[а-яё])\\b", "(?![а-яё])", r)
+match = [{"id": p["id"], "unit": p["unit"], "q": p["q"], "must": [js_re(m) for m in p["must"]], "excl": js_re(p.get("excl") or ""), "ref": data["fallback"].get(p["id"])} for p in data["products"]]
+(ROOT / "docs/match.json").write_text(json.dumps(match, ensure_ascii=False, indent=0), encoding="utf-8")
+data["pricesUrl"] = cfg.get("prices_url", "")
 for p in data["products"]:  # регулярки парсера приложению не нужны
-    for k in ("must", "excl", "q"):
+    for k in ("must", "excl", "q"):  # pack оставляем
         p.pop(k, None)
 
 html = (ROOT / "app/template.html").read_text(encoding="utf-8")
