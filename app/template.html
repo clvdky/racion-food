@@ -107,14 +107,20 @@ const haptic = t => { try { tg && tg.HapticFeedback.selectionChanged(); } catch 
 const ST = {
   get(k) { try { return JSON.parse(localStorage.getItem("r_" + k)); } catch (e) { return null; } },
   set(k, v) {
-    try { localStorage.setItem("r_" + k, JSON.stringify(v)); } catch (e) {}
-    try { if (tg && tg.CloudStorage && tg.isVersionAtLeast("6.9")) tg.CloudStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+    const t = Date.now();
+    try { localStorage.setItem("r_" + k, JSON.stringify(v)); localStorage.setItem("r_t_" + k, t); } catch (e) {}
+    try { if (tg && tg.CloudStorage && tg.isVersionAtLeast("6.9")) tg.CloudStorage.setItem(k, JSON.stringify({t, v})); } catch (e) {}
   },
   pull(keys, cb) {
     try {
       if (!(tg && tg.CloudStorage && tg.isVersionAtLeast("6.9"))) return cb();
       tg.CloudStorage.getItems(keys, (err, vals) => {
-        if (!err && vals) for (const k of keys) if (vals[k]) { try { localStorage.setItem("r_" + k, vals[k]); } catch (e) {} }
+        if (!err && vals) for (const k of keys) if (vals[k]) {
+          try {
+            const o = JSON.parse(vals[k]), local = +localStorage.getItem("r_t_" + k) || 0;
+            if (o && o.t && o.t > local) { localStorage.setItem("r_" + k, JSON.stringify(o.v)); localStorage.setItem("r_t_" + k, o.t); }
+          } catch (e) {}
+        }
         cb();
       });
     } catch (e) { cb(); }
@@ -146,6 +152,14 @@ function amtCost(pid, amt, store) {
   const i = priceInfo(pid), k = P[pid].unit === "pc" ? amt : amt / 1000;
   if (store) return {sum: k * (i.by[store] ?? i.fallback), est: i.by[store] == null};
   return i.best ? {sum: k * i.best.p, s: i.best.s, est: false} : {sum: k * i.fallback, est: true};
+}
+const hasLive = () => STORES.some(s => Object.keys(PRICES.stores?.[s]?.items || {}).length);
+function packInfo(pid, amt) {
+  const p = P[pid]; if (!p.pack) return null;
+  const n = Math.max(1, Math.ceil(amt / p.pack - 0.08));   // небольшой допуск, чтобы 405 г не превращались в 2 пачки по 400
+  const u = p.unit === "pc" ? " шт" : p.unit === "kg" ? (p.pack >= 1000 ? " кг" : " г") : (p.pack >= 1000 ? " л" : " мл");
+  const size = p.unit === "pc" ? p.pack : p.pack >= 1000 ? String(p.pack / 1000).replace(".", ",") : p.pack;
+  return {n, label: n + " уп. по " + size + u, amt: n * p.pack};
 }
 function nutr(pid, amt) { const p = P[pid], k = (p.unit === "pc" ? amt * p.pcw : amt) / 100; return p.n.map(x => x * k); }
 const RN = {};
@@ -180,7 +194,7 @@ const Q = [
   {k:"tools", t:"Какая посуда и техника есть?", multi:TOOLS, min:1, note:"Покажем только те блюда, которые можно приготовить"},
   {k:"batch", t:"На обед — то же, что на ужин прошлого дня?", skip:() => !(A.slots.includes("l") && A.slots.includes("d")), o:[["1","Да, обед = вчерашний ужин","готовишь ужин сразу на 2 порции, половину берёшь на обед"],["0","Нет, обед и ужин разные","каждый приём — своё блюдо"]], note:"В понедельник обед подбирается отдельно — вчерашнего ужина ещё нет"},
   {k:"people", t:"На сколько человек готовишь?", o:[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]], note:"Порции умножаются, калории считаются для тебя"},
-  {k:"budget", t:"Бюджет на продукты в неделю", num:[["budget","₸ на всех",20000]], quick:[12000,20000,30000,45000]},
+  {k:"budget", t:"Бюджет на продукты в неделю", num:[["budget","₸ на всех",20000]], quick:() => [9000, 13000, 18000].map(v => v * (+A.people || 1)), note:"Ориентир для Алматы на 1 человека: экономно ≈ 9 000 ₸, средне ≈ 13 000 ₸, свободно ≈ 18 000 ₸ в неделю"},
 ];
 function renderQuiz(el) {
   const q = Q[quizStep];
@@ -188,12 +202,12 @@ function renderQuiz(el) {
   if (q.o) h += q.o.map(([v, l, s]) => `<button class="opt ${A[q.k] === v ? "on" : ""}" data-pick="${v}">${l}${s ? `<small>${s}</small>` : ""}</button>`).join("");
   if (q.multi) { const arr = A[q.k] || []; h += q.multi.map(([v, l]) => `<button class="opt ${arr.includes(v) ? "on" : ""}" data-tog="${v}">${arr.includes(v) ? "✓ " : ""}${l}</button>`).join(""); }
   if (q.ban || q.fav) h += `<div id="banbox"></div>`;
-  if (q.num) h += q.num.map(([k, l, d]) => `<label class="f" for="n_${k}">${l}</label><input class="num" type="text" inputmode="numeric" autocomplete="off" id="n_${k}" placeholder="${d}" value="${A[k] ?? ""}">`).join("");
-  if (q.quick) h += `<div class="chips">${q.quick.map(v => `<button class="chip" data-quick="${v}">${fmt(v)} ₸</button>`).join("")}</div>`;
+  if (q.num) h += q.num.map(([k, l, d]) => `<label class="f" for="n_${k}">${l}</label><input class="num" type="text" inputmode="numeric" autocomplete="off" id="n_${k}" placeholder="${d}" value="${k === "budget" && A.budget && A.budgetPpl && A.budgetPpl !== +A.people ? Math.round(A.budget / A.budgetPpl * A.people / 500) * 500 : (A[k] ?? "")}">`).join("");
+  if (q.quick) h += `<div class="chips">${(typeof q.quick === "function" ? q.quick() : q.quick).map(v => `<button class="chip" data-quick="${v}">${fmt(v)} ₸</button>`).join("")}</div>`;
   if (q.note) h += `<p class="mut">${q.note}</p>`;
   h += `<div class="act"><div class="in">${quizStep ? `<button class="btn sec" data-act="qback">Назад</button>` : (PLAN ? `<button class="btn sec" data-act="qcancel">Отмена</button>` : "")}${q.num || q.multi || q.ban || q.fav ? `<button class="btn" data-act="qnext">${stepFrom(quizStep, 1) >= Q.length ? "Собрать рацион" : "Дальше"}</button>` : ""}</div></div>`;
   el.innerHTML = h;
-  el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { A[q.k] = b.dataset.pick; haptic(); renderQuiz(el); setTimeout(qNext, 140); });
+  el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { if (el.dataset.busy) return; el.dataset.busy = 1; A[q.k] = b.dataset.pick; haptic(); renderQuiz(el); setTimeout(() => { delete el.dataset.busy; qNext(); }, 140); });
   el.querySelectorAll("[data-tog]").forEach(b => b.onclick = () => { const v = b.dataset.tog, arr = A[q.k] || []; A[q.k] = arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; haptic(); renderQuiz(el); });
   el.querySelectorAll("[data-quick]").forEach(b => b.onclick = () => { $("n_budget").value = b.dataset.quick; });
   el.querySelectorAll("input.num").forEach(i => i.onkeydown = e => { if (e.key === "Enter") qNext(); });
@@ -230,6 +244,7 @@ function qNext() {
     if (!v) { el.focus(); return; } A[k] = v;
   }
   if (q.min && (A[q.k] || []).length < q.min) return toast("Выбери хотя бы один вариант");
+  if (q.k === "budget") A.budgetPpl = +A.people;
   ST.set("answers", A);
   const n = stepFrom(quizStep, 1);
   if (n < Q.length) { quizStep = n; render(); } else { quizStep = -1; build(Date.now() % 100000); }
@@ -237,7 +252,10 @@ function qNext() {
 function stepFrom(i, dir) { i += dir; while (i >= 0 && i < Q.length && Q[i].skip && Q[i].skip()) i += dir; return i; }
 
 // ---------- генерация ----------
-function rng(s) { return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+function rng(a) { // mulberry32: соседние seed дают независимые последовательности
+  a = (a ^ 0x9e3779b9) >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 function target() {
   const bmr = 10 * A.weight + 6.25 * A.height - 5 * A.age + (A.sex === "m" ? 5 : -161);
   return Math.round(bmr * +A.act * (A.goal === "lose" ? 0.82 : A.goal === "gain" ? 1.12 : 1));
@@ -276,25 +294,37 @@ function build(seed) {
   const slots = slotsSel();
   for (const s of slots) if (!pool[s].length) { toast("Нет подходящих блюд для «" + SLOT[s] + "» — верни часть продуктов, добавь посуду или время"); return; }
   const limit = {b: 2, l: 2, d: 2, s: 3};
-  let plan = null;
-  for (const w of [0, .4, 1, 2.5, 6, 15]) {
-    const rnd = rng(seed + 1), used = {}, days = [];
+  const gen = (w, sd) => {
+    const rnd = rng(sd), used = {}, days = [];
     for (let d = 0; d < 7; d++) {
       const day = {};
       for (const s of slots) {
         if (s === "l" && batch && d > 0) { day.l = {id: days[d - 1].d.id, m: days[d - 1].d.m, left: 1}; continue; }
         const tk = kc * sh[s];
         const c = pool[s].map(r => {
-          const m = multFor(r, tk), u = used[r.id] || 0;
-          return {r, m, sc: (u >= limit[s] ? 1e6 : u * 3) + rnd() * 2 - favN(r) * 1.2 + w * recipeCost(r, m) / (RN[r.id][0] * m) * 2.5};
+          const m = multFor(r, tk), u = used[r.id] || 0, raw = tk / RN[r.id][0];
+          const big = raw > 1.6 ? (raw - 1.6) * 4 : 0;   // не ставим «суп ×2,2» — лучше сытное блюдо
+          // цена за 1000 ккал, нормированная к ~1; случайная часть всегда весомая, чтобы «Новое меню» реально менялось
+          return {r, m, sc: (u >= limit[s] ? 1e6 : u * 3) + big + rnd() * 4 - favN(r) * 1.2 + w * recipeCost(r, m) / (RN[r.id][0] * m) * 1.6};
         }).sort((a, b) => a.sc - b.sc)[0];
         used[c.r.id] = (used[c.r.id] || 0) + (s === "d" && batch ? 2 : 1);
         day[s] = {id: c.r.id, m: c.m};
       }
       days.push(day);
     }
-    plan = {days, slots, kc, ppl: +A.people, seed};
-    if (shopping(plan).totals.mix <= A.budget) break;
+    return {days, slots, kc, ppl: +A.people, seed};
+  };
+  let plan = null, cost = 0;
+  for (const w of [0, .5, 1, 2, 3.5, 6, 12]) {
+    plan = gen(w, seed); cost = shopping(plan).totals.mix;
+    if (cost <= A.budget) break;
+  }
+  if (cost > A.budget) {
+    // в бюджет не влезли: оставляем разнообразное экономное меню (иначе «Новое меню» всегда одинаковое)
+    plan = gen(1, seed); cost = shopping(plan).totals.mix;
+    let min = Infinity;
+    for (let i = 0; i < 6; i++) { const c = shopping(gen(20, seed + 101 + i)).totals.mix; if (c < min) min = c; }
+    plan.minCost = Math.ceil(min / 500) * 500; plan.okBudget = Math.ceil(min * 1.12 / 1000) * 1000;
   }
   PLAN = plan; DONE = {}; ST.set("plan", PLAN); ST.set("done", DONE);
   tab = "plan"; render(); window.scrollTo(0, 0);
@@ -315,12 +345,14 @@ function shopping(plan) {
   const items = Object.entries(need).map(([pid, amt]) => {
     if (P[pid].unit === "pc") amt = Math.ceil(amt);
     const per = {}; for (const s of STORES) per[s] = amtCost(pid, amt, s);
-    return {pid, amt, mix: amtCost(pid, amt), per};
+    const pk = packInfo(pid, amt);
+    return {pid, amt, mix: amtCost(pid, amt), per, pk, buy: pk ? amtCost(pid, pk.amt).sum : amtCost(pid, amt).sum};
   });
-  const totals = {mix: 0}; for (const s of STORES) totals[s] = {sum: 0, miss: 0};
+  const totals = {mix: 0, receipt: items.reduce((t, i) => t + i.buy, 0)}; for (const s of STORES) totals[s] = {sum: 0, miss: 0};
   for (const it of items) { totals.mix += it.mix.sum; for (const s of STORES) { totals[s].sum += it.per[s].sum; if (it.per[s].est) totals[s].miss++; } }
   return {items, totals};
 }
+const portionG = (r, m) => Object.entries(r.ing).reduce((t, [pid, a]) => t + (P[pid].unit === "pc" ? a * P[pid].pcw : a), 0) * m * 0.85; // ~15% уходит при готовке
 const dayNutr = day => { const t = [0,0,0,0]; for (const s of PLAN.slots) RN[day[s].id].forEach((v, i) => t[i] += v * day[s].m); return t; };
 
 // ---------- экраны ----------
@@ -342,14 +374,17 @@ function noPlan(el, what) {
 function vPlan(el) {
   if (!PLAN) return noPlan(el);
   const T = shopping(PLAN).totals, over = T.mix > A.budget, day = PLAN.days[curDay], n = dayNutr(day);
-  let h = `<div class="kpi"><div><b>${fmt(dayNutr(PLAN.days[0])[0] && Math.round(PLAN.days.reduce((t, d) => t + dayNutr(d)[0], 0) / 7))}</b><span>ккал в меню${isFull() ? "" : " из " + fmt(PLAN.kc)}</span></div><div><b>${fmt(T.mix)} ₸</b><span>${PLAN.ppl > 1 ? "неделя, " + PLAN.ppl + " чел." : "за неделю"}</span></div><div><b style="color:${over ? "var(--warn)" : "var(--acc)"}">${over ? "+" : "−"}${fmt(Math.abs(T.mix - A.budget))}</b><span>${over ? "сверх бюджета" : "запас"}</span></div></div>`;
+  let h = `<div class="kpi"><div><b>${fmt(dayNutr(PLAN.days[0])[0] && Math.round(PLAN.days.reduce((t, d) => t + dayNutr(d)[0], 0) / 7))}</b><span>ккал в меню${isFull() ? "" : " из " + fmt(PLAN.kc)}</span></div><div><b>${fmt(T.mix)} ₸</b><span>${PLAN.ppl > 1 ? "неделя, " + PLAN.ppl + " чел." : "продукты / нед"}</span></div><div><b style="color:${over ? "var(--warn)" : "var(--acc)"}">${over ? "+" : "−"}${fmt(Math.abs(T.mix - A.budget))}</b><span>${over ? "сверх бюджета" : "запас"}</span></div></div>`;
+  if (over) h += `<div class="card" style="border-color:var(--warn)"><b>Бюджет мал${PLAN.ppl > 1 ? " для " + PLAN.ppl + " чел." : ""}</b><div class="mut" style="margin:4px 0 10px">Меню дороже на ${fmt(T.mix - A.budget)} ₸.${PLAN.minCost ? " Самое экономное меню под твои ответы — около " + fmt(PLAN.minCost) + " ₸." : ""}</div><div class="row" style="display:flex;gap:8px">${PLAN.okBudget && PLAN.okBudget > A.budget ? `<button class="btn" style="flex:1" data-act="budget" data-v="${PLAN.okBudget}">Бюджет ${fmt(PLAN.okBudget)} ₸</button>` : ""}<button class="btn sec" style="flex:1" data-act="budget" data-v="${Math.ceil(T.mix / 1000) * 1000}">Оставить как есть</button></div></div>`;
   h += `<div class="daybar">${DAYS.map((d, i) => `<button class="${i === curDay ? "on" : ""}" data-day="${i}"><b>${d}</b>${fmt(dayNutr(PLAN.days[i])[0])}</button>`).join("")}</div>`;
   h += `<div class="card"><h2>${DAYS_FULL[curDay]}</h2>`;
   for (const s of PLAN.slots) {
     const m = day[s], r = R[m.id], k = RN[r.id].map(v => v * m.m);
-    h += `<div class="meal" data-open="${r.id}" data-m="${m.m}" data-slot="${s}"><div><div class="tag">${SLOT[s]}${m.left ? " · со вчера" : ""}</div><b>${r.name}</b>${m.m !== 1 ? ` <span class="mut">×${String(m.m).replace(".", ",")}</span>` : ""}</div><div class="k">${fmt(k[0])} ккал<br>Б${fmt(k[1])} Ж${fmt(k[2])} У${fmt(k[3])}</div></div>`;
+    h += `<div class="meal" data-open="${r.id}" data-m="${m.m}" data-slot="${s}"><div><div class="tag">${SLOT[s]}${m.left ? " · со вчера" : ""}</div><b>${r.name}</b> <span class="mut">· ≈${fmt(Math.round(portionG(r, m.m) / 10) * 10)} г</span></div><div class="k">${fmt(k[0])} ккал<br>Б${fmt(k[1])} Ж${fmt(k[2])} У${fmt(k[3])}</div></div>`;
   }
   h += `<div class="mut" style="margin-top:6px">Итого: ${fmt(n[0])} ккал · Б ${fmt(n[1])} г · Ж ${fmt(n[2])} г · У ${fmt(n[3])} г</div></div>`;
+  const meals = PLAN.days.length * PLAN.slots.filter(s => s !== "s").length * PLAN.ppl, cafe = meals * (D.cafe || 2500), save = cafe - T.receipt;
+  if (save > 0) h += `<div class="card" style="background:var(--acc2);border:0"><b>Экономия ≈ ${fmt(save)} ₸ в неделю</b><div class="mut">Те же ${meals} приёмов пищи в кафе ≈ ${fmt(cafe)} ₸ (по ${fmt(D.cafe || 2500)} ₸). За месяц ≈ ${fmt(save * 4.3)} ₸.</div></div>`;
   h += `<p class="mut">Нажми на блюдо — рецепт и замена.</p>`;
   h += `<div class="act"><div class="in"><button class="btn sec" data-act="quiz">Изменить ответы</button><button class="btn" data-act="rebuild">Новое меню</button></div></div>`;
   el.innerHTML = h;
@@ -362,18 +397,29 @@ function vList(el) {
   let h = `<h1>Покупки</h1><div class="mut">${left ? "Осталось купить: " + left + " из " + L.items.length : "Всё куплено"}</div><div class="card">`;
   for (const [g, arr] of Object.entries(groups)) {
     h += `<div class="grp">${g}</div>`;
-    for (const it of arr) h += `<div class="li ${DONE[it.pid] ? "done" : ""}" data-done="${it.pid}"><span><span class="box">${DONE[it.pid] ? "✓" : ""}</span>${P[it.pid].name} — <b>${amtStr(it.pid, it.amt)}</b></span><span>${fmt(it.mix.sum)} ₸<br>${it.mix.est ? `<span class="est">оценка</span>` : `<span class="mut">${SN[it.mix.s]}</span>`}</span></div>`;
+    for (const it of arr) h += `<div class="li ${DONE[it.pid] ? "done" : ""}" data-done="${it.pid}"><span><span class="box">${DONE[it.pid] ? "✓" : ""}</span>${P[it.pid].name} — <b>${amtStr(it.pid, it.amt)}</b>${it.pk ? `<br><span class="mut" style="margin-left:28px">купить: ${it.pk.label}</span>` : ""}</span><span>≈${fmt(it.buy)} ₸${hasLive() ? `<br>${it.mix.est ? `<span class="est">оценка</span>` : `<span class="mut">${SN[it.mix.s]}</span>`}` : ""}</span></div>`;
   }
-  h += `</div><div class="card"><h2>Где купить всё сразу</h2><div class="tot">`;
-  STORES.map(s => [s, T[s]]).sort((a, b) => a[1].sum - b[1].sum).forEach(([s, v], i) =>
-    h += `<span class="${i ? "" : "best"}">${SN[s]}${v.miss ? ` <span class="est">${v.miss} поз. по оценке</span>` : ""}</span><span class="${i ? "" : "best"}">${fmt(v.sum)} ₸</span>`);
-  h += `<span><b>Каждый продукт там, где дешевле</b></span><span><b>${fmt(T.mix)} ₸</b></span></div><p class="mut">Соль и специи не входят. Сумма по фактическому весу, без округления до упаковки.</p></div>`;
+  h += `</div><div class="card"><h2>Сколько выйдет</h2><div class="tot"><span>Продукты на неделю (по весу)</span><span>${fmt(T.mix)} ₸</span><span><b>В чеке с учётом упаковок</b></span><span><b>≈ ${fmt(T.receipt)} ₸</b></span></div><p class="mut">Остатки упаковок (крупы, масло, специи) уйдут на следующую неделю. Соль и специи не входят.</p></div>`;
+  if (hasLive()) {
+    h += `<div class="card"><h2>Где купить всё сразу</h2><div class="tot">`;
+    STORES.map(s => [s, T[s]]).sort((a, b) => a[1].sum - b[1].sum).forEach(([s, v], i) =>
+      h += `<span class="${i ? "" : "best"}">${SN[s]}${v.miss ? ` <span class="est">${v.miss} поз. по оценке</span>` : ""}</span><span class="${i ? "" : "best"}">${fmt(v.sum)} ₸</span>`);
+    h += `<span><b>Каждый продукт там, где дешевле</b></span><span><b>${fmt(T.mix)} ₸</b></span></div></div>`;
+  } else h += `<p class="mut">Цены — ориентир по Алматы. Сравнение Magnum / Small / Arbuz появится после первого обновления цен.</p>`;
   h += `<div class="act"><div class="in"><button class="btn sec" data-act="copy">Копировать</button><button class="btn" data-act="share">Отправить в чат</button></div></div>`;
   el.innerHTML = h;
 }
 function vPrices(el) {
   const q = priceQuery.toLowerCase().replace(/ё/g, "е");
   const list = D.products.filter(p => !q || p.name.toLowerCase().replace(/ё/g, "е").includes(q));
+  if (!hasLive()) {
+    let h = `<h1>Цены</h1><input class="search" id="pq" placeholder="Найти продукт: молоко, гречка…" value="${esc(priceQuery)}"><div class="card"><div class="li mut"><span>Продукт</span><span>≈ ₸ за кг / л / шт</span></div>`;
+    for (const p of list) h += `<div class="li"><span>${p.name}</span><span>${fmt(D.fallback[p.id])}</span></div>`;
+    if (!list.length) h += `<div class="empty">Ничего не найдено</div>`;
+    el.innerHTML = h + `</div><p class="mut">Пока это средние цены по Алматы. Живое сравнение Magnum, Small и Arbuz подключится после первого обновления цен.</p>`;
+    const inp = $("pq"); inp.oninput = () => { priceQuery = inp.value; const pos = inp.selectionStart; vPrices(el); const n = $("pq"); n.focus(); n.setSelectionRange(pos, pos); };
+    return;
+  }
   let h = `<h1>Цены</h1><input class="search" id="pq" placeholder="Найти продукт: молоко, гречка…" value="${esc(priceQuery)}"><div class="card"><div class="prow h"><span>₸ за кг / л / шт</span>${STORES.map(s => `<span>${SN[s]}</span>`).join("")}</div>`;
   for (const p of list) {
     const i = priceInfo(p.id);
@@ -447,7 +493,7 @@ function closeModal() { TIMERS.forEach(t => clearInterval(t)); TIMERS.clear(); d
 // ---------- действия ----------
 function listText() {
   const L = shopping(PLAN);
-  return "🛒 Список покупок на неделю\n" + L.items.map(it => `• ${P[it.pid].name} — ${amtStr(it.pid, it.amt)}`).join("\n") + `\n\n≈ ${fmt(L.totals.mix)} ₸`;
+  return "🛒 Список покупок на неделю\n" + L.items.map(it => `• ${P[it.pid].name} — ${it.pk ? it.pk.label : amtStr(it.pid, it.amt)}`).join("\n") + `\n\n≈ ${fmt(L.totals.receipt)} ₸`;
 }
 function copyText(t) {
   const ok = () => toast("Список скопирован");
@@ -467,7 +513,8 @@ document.addEventListener("click", e => {
   else if (d.act === "qnext") qNext();
   else if (d.act === "qback") { quizStep = Math.max(0, stepFrom(quizStep, -1)); render(); }
   else if (d.act === "qcancel") { quizStep = -1; render(); }
-  else if (d.act === "rebuild") build((PLAN ? PLAN.seed : 0) + 1);
+  else if (d.act === "rebuild") { build((PLAN ? PLAN.seed : 0) + 1); toast("Собрано новое меню"); }
+  else if (d.act === "budget") { A.budget = +d.v; ST.set("answers", A); build((PLAN ? PLAN.seed : 0) + 1); }
   else if (d.act === "copy") copyText(listText());
   else if (d.act === "share") share();
   else if (d.act === "close") closeModal();
