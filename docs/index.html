@@ -621,6 +621,7 @@ function build(seed, o = {}) {
     else return askBudget(seed, o, need, fit, cheap);
   }
   plan.at = Date.now(); PLAN = plan; DONE = {}; ST.set("plan", PLAN); ST.set("done", DONE);
+  track("plan", Object.assign(prof(), {cost: Math.round(shopping(PLAN).totals.mix), cut: !!PLAN.cut}));
   if (moved) o.msg = (o.msg || "Меню обновлено") + ". Купленное — в «Есть дома»";
   if (!o.stay) tab = "plan";
   render(); if (!o.stay) window.scrollTo(0, 0);
@@ -986,7 +987,7 @@ function copyText(t) {
   try { navigator.clipboard ? navigator.clipboard.writeText(t).then(ok, fb) : fb(); } catch (e) { fb(); }
 }
 function share() {
-  const t = listText(), url = D.botLink || "https://t.me";
+  const t = listText(), url = D.botLink || "https://t.me"; track("share");
   if (tg) { try { tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(t)); return; } catch (e) {} }
   copyText(t);
 }
@@ -1024,6 +1025,12 @@ document.addEventListener("click", e => {
 });
 
 setStores();
+const TRACK = D.trackUrl || (D.pricesUrl ? D.pricesUrl.replace(/\/prices$/, "/track") : "");
+function track(ev, data) {
+  if (!TRACK || !tg || !tg.initData) return;
+  try { fetch(TRACK, {method: "POST", headers: {"content-type": "text/plain"}, body: JSON.stringify({initData: tg.initData, ev, data: data || {}}), keepalive: true}).catch(() => {}); } catch (e) {}
+}
+const prof = () => ({goal: A.goal, budget: +A.budget || 0, people: +A.people || 0, time: A.time, meals: (A.slots || []).length});
 const loadPrices = u => fetch(u, {cache: "no-store"}).then(r => r.ok ? r.json() : null).then(j => j && j.stores && Object.values(j.stores).some(x => Object.keys(x.items || {}).length) ? j : null);
 (D.pricesUrl ? loadPrices(D.pricesUrl).catch(() => null) : Promise.resolve(null)).then(j => j || loadPrices("prices.json").catch(() => null)).then(j => { if (j) { PRICES = j; setStores(); if (quizStep < 0 && !document.querySelector(".modal")) render(); } });
 ST.pull(["answers", "plan", "done", "stock"], () => {
@@ -1033,6 +1040,7 @@ ST.pull(["answers", "plan", "done", "stock"], () => {
   if (!A.tools) A.tools = ["pan","pot_small","pot_big","oven"];
   if (PLAN && !PLAN.days[0][PLAN.slots[0]].hasOwnProperty("m")) PLAN = null;
   render();
+  track("open", Object.assign(A.goal ? prof() : {}, {hasPlan: !!PLAN, start: (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || ""}));
 });
 render();
 }
