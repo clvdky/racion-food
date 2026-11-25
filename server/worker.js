@@ -2,8 +2,11 @@
 // Переменные окружения:
 //   BOT_TOKEN  — токен бота из @BotFather (секрет, вводится в настройках Worker)
 //   APP_URL    — ссылка на Mini App (по умолчанию GitHub Pages)
+//   ADMIN_CODE — секрет: админ один раз пишет боту /admin <код>
+//   SHEET_URL  — необязательно: адрес веб-приложения Google Apps Script (server/sheets.gs),
+//                туда дублируется каждое событие
 // Привязки:
-//   USERS      — KV namespace (подписки на напоминания)
+//   USERS      — KV namespace: подписки (r:), пользователи (u:), цены (p:), настройки (cfg:)
 // Триггеры Cron: "0 6 * * SUN" — напоминание в воскресенье 11:00 по Алматы;
 //                 "*/20 * * * *" — шаг обновления цен (полный круг ≈ 2 часа).
 // Цены: GET /prices — для Mini App; правила сопоставления берутся из APP_URL/match.json.
@@ -75,10 +78,117 @@ async function setRemind(env, chatId, on, user) {
   else await env.USERS.delete("r:" + chatId);
 }
 
+
+// ---------- Пользователи, события, админ ----------
+const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+const almaty = (t) => new Date(t + 5 * 3600e3).toISOString().slice(0, 16).replace("T", " ");
+const GOAL = { lose: "похудеть", keep: "держать вес", gain: "набрать" };
+const EVN = { open: "открыл приложение", plan: "собрал меню", share: "поделился списком" };
+
+async function checkInit(env, initData) {   // проверка подписи Telegram Mini App
+  const p = new URLSearchParams(initData || ""), hash = p.get("hash");
+  if (!hash) return null;
+  p.delete("hash");
+  const dcs = [...p.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => k + "=" + v).join("\n");
+  const enc = new TextEncoder(), alg = { name: "HMAC", hash: "SHA-256" };
+  const k1 = await crypto.subtle.importKey("raw", enc.encode("WebAppData"), alg, false, ["sign"]);
+  const k2 = await crypto.subtle.importKey("raw", await crypto.subtle.sign("HMAC", k1, enc.encode(env.BOT_TOKEN)), alg, false, ["sign"]);
+  if (hex(await crypto.subtle.sign("HMAC", k2, enc.encode(dcs))) !== hash) return null;
+  if (Date.now() / 1000 - +p.get("auth_date") > 7 * 86400) return null;
+  try { return JSON.parse(p.get("user")); } catch (e) { return null; }
+}
+
+const getCfg = (env) => kvGet(env, "cfg:admin", { ids: [], notify: true });
+const isAdmin = async (env, id) => (await getCfg(env)).ids.includes(id);
+const who = (u) => [u.name, u.last].filter(Boolean).join(" ") + (u.username ? " @" + u.username : "") + " (id " + u.id + ")";
+
+// Записать событие: обновляет карточку u:<id>, шлёт уведомление админу и строку в Google Sheets
+async function logEvent(env, from, ev, data = {}) {
+  if (!env.USERS || !from || !from.id || from.is_bot) return;
+  const now = Date.now(), key = "u:" + from.id;
+  const old = await kvGet(env, key, null), isNew = !old;
+  const u = old || { id: from.id, first: now, n: 0, plans: 0, events: [], src: data.start || "" };
+  if (!isNew && ev === "open" && now - u.seen < 10 * 60e3) return;   // не пишем каждое открытие
+  Object.assign(u, { name: from.first_name || "", last: from.last_name || "", username: from.username || "", lang: from.language_code || "", premium: !!from.is_premium, seen: now });
+  u.n++;
+  if (!u.src && data.start) u.src = data.start;
+  if (data.goal) u.profile = { goal: data.goal, budget: data.budget, people: data.people, time: data.time, meals: data.meals };
+  const firstPlan = ev === "plan" && !u.plans;
+  if (ev === "plan") u.plans++;
+  u.events = [{ t: now, ev }].concat(u.events).slice(0, 30);
+  const meta = { n: (u.name + " " + u.last).trim().slice(0, 60), u: u.username, f: u.first, s: u.seen, c: u.n, p: u.plans, g: u.profile?.goal || "", b: u.profile?.budget || 0 };
+  await env.USERS.put(key, JSON.stringify(u), { metadata: meta });
+
+  const cfg = await getCfg(env);
+  if (cfg.notify && cfg.ids.length && !cfg.ids.includes(from.id) && (isNew || firstPlan)) {
+    let t = isNew ? "Новый пользователь\n" + who(u) + "\nЯзык: " + (u.lang || "—") + (u.src ? "\nИсточник: " + u.src : "") + "\nПервое действие: " + (EVN[ev] || ev)
+                  : "Собрал первое меню\n" + who(u);
+    if (ev === "plan" && data.goal) t += "\nЦель: " + (GOAL[data.goal] || data.goal) + ", " + data.people + " чел., бюджет " + data.budget + " ₸, меню " + data.cost + " ₸";
+    for (const id of cfg.ids) await tg(env, "sendMessage", { chat_id: id, text: t, disable_web_page_preview: true });
+  }
+  if (env.SHEET_URL) {
+    try {
+      await fetch(env.SHEET_URL, { method: "POST", headers: { "content-type": "application/json" }, redirect: "follow",
+        body: JSON.stringify({ time: almaty(now), id: u.id, name: (u.name + " " + u.last).trim(), username: u.username, lang: u.lang, ev, isNew,
+          goal: u.profile?.goal || "", budget: u.profile?.budget || "", people: u.profile?.people || "", plans: u.plans, first: almaty(u.first), data: JSON.stringify(data) }) });
+    } catch (e) { console.log("sheet", e); }
+  }
+}
+
+async function listUsers(env) {
+  const out = []; let c;
+  do { const p = await env.USERS.list({ prefix: "u:", cursor: c }); for (const k of p.keys) out.push({ id: +k.name.slice(2), ...(k.metadata || {}) }); c = p.list_complete ? null : p.cursor; } while (c);
+  return out;
+}
+
+async function adminCmd(env, chatId, cmd, arg) {
+  const send = (text) => tg(env, "sendMessage", { chat_id: chatId, text, disable_web_page_preview: true });
+  if (cmd === "/stats") {
+    const L = await listUsers(env), now = Date.now(), d = 86400e3;
+    const cnt = (f) => L.filter(f).length;
+    let subs = 0, c; do { const p = await env.USERS.list({ prefix: "r:", cursor: c }); subs += p.keys.length; c = p.list_complete ? null : p.cursor; } while (c);
+    const g = {}; for (const u of L) if (u.g) g[u.g] = (g[u.g] || 0) + 1;
+    return send("Пользователи: " + L.length +
+      "\nНовых за сутки: " + cnt((u) => now - u.f < d) + ", за 7 дней: " + cnt((u) => now - u.f < 7 * d) +
+      "\nАктивных за сутки: " + cnt((u) => now - u.s < d) + ", за 7 дней: " + cnt((u) => now - u.s < 7 * d) +
+      "\nСобрали меню: " + cnt((u) => u.p > 0) +
+      "\nПодписаны на напоминания: " + subs +
+      "\nЦели: " + (Object.entries(g).map(([k, v]) => (GOAL[k] || k) + " " + v).join(", ") || "—"));
+  }
+  if (cmd === "/users") {
+    const L = (await listUsers(env)).sort((a, b) => b.s - a.s).slice(0, 25);
+    if (!L.length) return send("Пока никого.");
+    return send("Последние активные:\n\n" + L.map((u) => almaty(u.s) + "  " + (u.n || "без имени") + (u.u ? " @" + u.u : "") + "  · меню: " + (u.p || 0)).join("\n"));
+  }
+  if (cmd === "/export") {
+    const L = await listUsers(env), q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const rows = [["id", "имя", "username", "первый визит", "последний визит", "действий", "меню собрано", "цель", "бюджет"]]
+      .concat(L.map((u) => [u.id, u.n, u.u ? "@" + u.u : "", almaty(u.f), almaty(u.s), u.c, u.p, GOAL[u.g] || "", u.b || ""]));
+    const fd = new FormData();
+    fd.append("chat_id", String(chatId));
+    fd.append("document", new Blob(["﻿" + rows.map((r) => r.map(q).join(";")).join("\n")], { type: "text/csv" }), "users-" + almaty(Date.now()).slice(0, 10) + ".csv");
+    return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: "POST", body: fd });
+  }
+  if (cmd === "/notify") {
+    const cfg = await getCfg(env); cfg.notify = !cfg.notify;
+    await env.USERS.put("cfg:admin", JSON.stringify(cfg));
+    return send(cfg.notify ? "Уведомления о новых пользователях включены." : "Уведомления выключены. Включить — /notify");
+  }
+  return send("Админ-команды:\n/stats — сводка\n/users — последние активные\n/export — все пользователи в CSV (открывается в Excel и Google Sheets)\n/notify — вкл/выкл уведомления");
+}
+
 async function onMessage(env, msg) {
   const chatId = msg.chat.id, text = (msg.text || "").trim();
   if (msg.chat.type !== "private") return; // в группах молчим
-  const cmd = text.split(/[ @]/)[0].toLowerCase();
+  const cmd = text.split(/[ @]/)[0].toLowerCase(), arg = text.split(/\s+/)[1] || "";
+  await logEvent(env, msg.from, cmd.startsWith("/") ? "bot " + cmd : "bot text", cmd === "/start" && arg ? { start: arg } : {});
+  if (cmd === "/admin" && env.ADMIN_CODE && arg === env.ADMIN_CODE) {
+    const cfg = await getCfg(env);
+    if (!cfg.ids.includes(msg.from.id)) cfg.ids.push(msg.from.id);
+    await env.USERS.put("cfg:admin", JSON.stringify(cfg));
+    return adminCmd(env, chatId, "/help-admin");
+  }
+  if (["/stats", "/users", "/export", "/notify", "/admin"].includes(cmd) && (await isAdmin(env, msg.from.id))) return adminCmd(env, chatId, cmd, arg);
   if (cmd === "/start") {
     return tg(env, "sendMessage", { chat_id: chatId, text: T.start(msg.from?.first_name), reply_markup: await startKeyboard(env, chatId) });
   }
@@ -94,6 +204,7 @@ async function onMessage(env, msg) {
 
 async function onCallback(env, cq) {
   const chatId = cq.message?.chat.id;
+  await logEvent(env, cq.from, "bot " + cq.data);
   if (cq.data === "remind_on" || cq.data === "remind_off") {
     const on = cq.data === "remind_on";
     await setRemind(env, chatId, on, cq.from);
@@ -243,8 +354,21 @@ async function priceStep(env) {
 const cors = { "access-control-allow-origin": "*", "content-type": "application/json; charset=utf-8" };
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    if (url.pathname === "/track") {   // события из Mini App, подпись initData проверяется
+      if (req.method === "OPTIONS") return new Response(null, { headers: { ...cors, "access-control-allow-methods": "POST", "access-control-allow-headers": "content-type" } });
+      if (req.method !== "POST" || !env.BOT_TOKEN || !env.USERS) return new Response("{}", { status: 400, headers: cors });
+      let b; try { b = JSON.parse(await req.text()); } catch (e) { return new Response("{}", { status: 400, headers: cors }); }
+      const user = await checkInit(env, b.initData);
+      if (!user) return new Response('{"ok":false}', { status: 403, headers: cors });
+      const ev = ["open", "plan", "share"].includes(b.ev) ? b.ev : "other";
+      const d = b.data && typeof b.data === "object" ? b.data : {};
+      const data = { goal: String(d.goal || "").slice(0, 8), budget: +d.budget || 0, people: +d.people || 0, time: String(d.time || "").slice(0, 5), meals: +d.meals || 0, cost: +d.cost || 0, start: String(d.start || "").slice(0, 64) };
+      if (!data.goal) delete data.goal;
+      ctx.waitUntil(logEvent(env, user, ev, data).catch((e) => console.log("track", e)));
+      return new Response('{"ok":true}', { headers: cors });
+    }
     if (url.pathname === "/prices") {
       const p = env.USERS ? await env.USERS.get("p:prices") : null;
       return new Response(p || '{"stores":{}}', { headers: { ...cors, "cache-control": "public, max-age=600" } });
